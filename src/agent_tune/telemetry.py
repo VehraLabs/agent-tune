@@ -1,8 +1,13 @@
-"""Read live values from a KTuner dongle over USB, read-only.
+"""Read live values from a KTuner dongle over USB. Read-only.
 
-The only byte ever sent is the B0 read poll that KTuner itself uses for live
-data. There is no write, storage, update, registration or flash command in
-this package. Close the KTuner app first: it holds the same COM port.
+The only byte ever sent is the B0 poll that KTuner itself uses for live data.
+There is no write, storage, update, registration or flash command in this
+package. Close the KTuner app first: it holds the same COM port.
+
+Where each channel sits in the reply is described by a platform file in
+`platforms/`. You can also pass the path of your own platform JSON to try a
+car that is not bundled yet; unrecognized frames are logged raw so they can be
+compared with a KTuner datalog.
 """
 from dataclasses import dataclass
 from functools import lru_cache
@@ -13,10 +18,6 @@ import time
 
 FTDI_VID, FTDI_PID, SERIAL_PREFIX = 0x0403, 0x6001, 'KTFLV'
 BAUD = 1_000_000
-FRAME_BODY_LENGTHS = frozenset((2, 531, 649))  # observed B0 reply bodies; 531 carries telemetry
-GROUPS = {'A': (3, 169, (0x2610, 0x2611, 0x2612)),
-          'B': (172, 113, (0x2613, 0x2660)),
-          'C': (341, 169, (0x2662, 0x2663, 0x266C))}
 READERS = {'u8': (1, 'big', False), 'u16be': (2, 'big', False), 'u16le': (2, 'little', False),
            's16be': (2, 'big', True)}
 PLATFORM_DIR = Path(__file__).parent / 'platforms'
@@ -32,17 +33,34 @@ def platforms():
     return out
 
 
+@lru_cache(maxsize=None)
+def _platform_file(path):
+    data = json.loads(Path(path).read_text(encoding='utf-8'))
+    for key in ('id', 'name', 'transport', 'channels'):
+        if key not in data:
+            raise ValueError(f'Platform file {path} is missing "{key}"')
+    return data
+
+
 def platform(platform_id=DEFAULT_PLATFORM):
-    try:
+    """A bundled platform by id, or a platform JSON file by path."""
+    if platform_id in platforms():
         return platforms()[platform_id]
-    except KeyError:
-        raise ValueError(f'Unknown platform {platform_id!r}; known: {", ".join(platforms())}') from None
+    if str(platform_id).lower().endswith('.json') and Path(platform_id).is_file():
+        return _platform_file(str(Path(platform_id).resolve()))
+    raise ValueError(f'Unknown platform {platform_id!r}; bundled: {", ".join(platforms())}, '
+                     'or pass the path of a platform .json file')
+
+
+def transport(platform_id=DEFAULT_PLATFORM):
+    return platform(platform_id)['transport']
 
 
 class B0Stream:
     """Reassemble B0-framed replies (B0, u16le body length, body) from UART chunks."""
 
-    def __init__(self):
+    def __init__(self, body_lengths=None):
+        self.body_lengths = frozenset(body_lengths or transport()['frame_body_lengths'])
         self.buffer = bytearray()
         self.discarded = 0
 
@@ -58,7 +76,7 @@ class B0Stream:
                 if len(self.buffer) < 3:
                     break
                 size = int.from_bytes(self.buffer[1:3], 'little')
-                if size not in FRAME_BODY_LENGTHS:
+                if size not in self.body_lengths:
                     del self.buffer[0]
                     self.discarded += 1
                     continue
@@ -69,21 +87,28 @@ class B0Stream:
         return frames
 
 
-def split_groups(frame):
-    """Return {'A': bytes, 'B': bytes, 'C': bytes} for a 534-byte telemetry frame, else None."""
-    if len(frame) != 534 or any(frame[285:341]):
+def split_groups(frame, platform_id=DEFAULT_PLATFORM):
+    """Return {group name: bytes} for a telemetry frame that matches the platform layout, else None."""
+    t = transport(platform_id)
+    if len(frame) != t['frame_bytes']:
         return None
+    for first, last in t.get('zero_ranges', ()):
+        if any(frame[first:last]):
+            return None
     out = {}
-    for name, (offset, size, dids) in GROUPS.items():
+    for name, group in t['groups'].items():
+        offset, size, dids = group['offset'], group['size'], [int(d, 16) for d in group['dids']]
         payload = frame[offset:offset + size]
-        if payload[0] != 0x62 or [int.from_bytes(payload[i:i + 2], 'big') for i in range(1, size, 56)] != list(dids):
+        if len(payload) != size or payload[0] != 0x62:
+            return None
+        if [int.from_bytes(payload[i:i + 2], 'big') for i in range(1, size, group.get('did_stride', 56))] != dids:
             return None
         out[name] = bytes(payload)
     return out
 
 
 def decode_groups(groups, platform_id=DEFAULT_PLATFORM):
-    """Decode validated channels from group payloads (offsets include the 0x62 byte)."""
+    """Decode the platform's channels from group payloads (offsets include the leading 0x62 byte)."""
     values = {}
     for ch in platform(platform_id)['channels']:
         raw = groups.get(ch['group'])
@@ -105,9 +130,8 @@ def find_ports(ports=None):
 
 
 def open_port(name):
+    """Open a serial port with the dongle's settings. Any port name is accepted when given explicitly."""
     import serial
-    if name not in [p['port'] for p in find_ports()]:
-        raise ValueError(f'{name} is not a detected KTuner dongle')
     port = serial.Serial(port=None, baudrate=BAUD, bytesize=8, parity='N', stopbits=1, timeout=0.02,
                          write_timeout=0.2, xonxoff=False, rtscts=False, dsrdtr=False)
     port.dtr = False
@@ -123,6 +147,7 @@ class Summary:
     polls: int
     frames: int
     telemetry_frames: int
+    unknown_frames: int
     bytes_received: int
 
     def as_dict(self):
@@ -130,19 +155,22 @@ class Summary:
 
 
 def record(port, seconds, out_path, platform_id=DEFAULT_PLATFORM, interval=0.05, on_values=None, stop=None):
-    """Poll B0 for up to `seconds`, writing one JSON line per telemetry frame.
+    """Poll B0 for up to `seconds`, writing one JSON line per reply frame.
 
-    Each line: {"t": seconds, "ch": {decoded channels}, "raw": {"A": hex, "B": hex, "C": hex}}.
-    Raw bytes are kept so logs can be re-decoded when definitions improve.
+    Telemetry frames: {"t": seconds, "ch": {decoded channels}, "raw": {"A": hex, ...}}.
+    Frames that do not match the platform layout: {"t": seconds, "frame": hex}.
+    Raw bytes are kept so logs can be re-decoded when platform definitions improve.
     """
     if not 0 < seconds <= 3600 or not 0.02 <= interval <= 1:
         raise ValueError('Duration must be 0-3600 s and poll interval 0.02-1 s')
-    stream = B0Stream()
-    polls = frames = telemetry = received = 0
+    plat = platform(platform_id)
+    stream = B0Stream(plat['transport']['frame_body_lengths'])
+    polls = frames = telemetry = unknown = received = 0
     start = time.monotonic()
     next_poll = start
     with Path(out_path).open('x', encoding='utf-8') as out:
-        out.write(json.dumps({'format': 'agent-tune.log.v1', 'platform': platform_id,
+        out.write(json.dumps({'format': 'agent-tune.log.v1', 'platform': plat['id'],
+                              'platform_file': None if platform_id in platforms() else str(Path(platform_id).resolve()),
                               'started': time.strftime('%Y-%m-%dT%H:%M:%S%z')}) + '\n')
         while time.monotonic() - start < seconds and not (stop is not None and stop.is_set()):
             now = time.monotonic()
@@ -155,16 +183,18 @@ def record(port, seconds, out_path, platform_id=DEFAULT_PLATFORM, interval=0.05,
             received += len(chunk)
             for frame in stream.feed(chunk):
                 frames += 1
-                groups = split_groups(frame)
+                t = round(time.monotonic() - start, 4)
+                groups = split_groups(frame, platform_id)
                 if groups is None:
+                    unknown += 1
+                    out.write(json.dumps({'t': t, 'frame': frame.hex()}) + '\n')
                     continue
                 telemetry += 1
                 values = decode_groups(groups, platform_id)
-                t = round(time.monotonic() - start, 4)
                 out.write(json.dumps({'t': t, 'ch': values, 'raw': {k: v.hex() for k, v in groups.items()}}) + '\n')
                 if on_values is not None:
                     on_values(t, values)
-    return Summary(round(time.monotonic() - start, 3), polls, frames, telemetry, received)
+    return Summary(round(time.monotonic() - start, 3), polls, frames, telemetry, unknown, received)
 
 
 def finite(value):

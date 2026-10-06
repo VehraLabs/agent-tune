@@ -1,7 +1,8 @@
-"""MCP server exposing agent-tune to AI agents (stdio).
+"""MCP server exposing agent-tune to AI agents over stdio.
 
-Add to an MCP client, e.g. Claude Code:
-    claude mcp add agent-tune -- uvx --from "agent-tune[mcp]" agent-tune mcp
+Claude Code: `claude mcp add agent-tune -- agent-tune mcp`. Any MCP client can run
+`agent-tune mcp` as a stdio server. The CLI offers the same functions as JSON for
+agents that prefer a shell; see skills/agent-tune/SKILL.md.
 """
 from pathlib import Path
 import time
@@ -10,15 +11,16 @@ from mcp.server.mcpserver import MCPServer
 
 from . import __version__, analyze, logs, suggest, telemetry, tune
 
-INSTRUCTIONS = """agent-tune reads car data through the user's KTuner dongle and edits KTuner .kcl tune files.
+INSTRUCTIONS = """agent-tune reads car data through the user's KTuner dongle and writes new KTuner .kcl tune files.
 Workflow: list_devices -> record_log (KTuner app closed, ignition ON) or use the user's KTuner CSV export ->
-analyze_log -> discuss findings with the user -> tune_cells to see current values -> tune_write a NEW .kcl ->
-the user opens it in KTuner, reviews, and flashes it themselves -> record again and compare_logs.
+analyze_log -> discuss findings with the user -> tune_cells to see current values -> tune_write (dry_run first) a NEW
+.kcl -> the user opens it in KTuner, reviews and flashes it themselves -> record again and compare_logs.
 Rules: never claim a change is safe; change timing in small steps (<= 1 degree) and only where logs show no knock;
 never add timing where AFR is lean at full throttle; show every change (from -> to) before writing; never overwrite
 the user's original tune; keep the user's stock backup. Power decisions need full-throttle pulls in the same gear.
-Live USB reading and .kcl editing are validated only for the Honda Civic 11th gen 2.0 (64S ECU); KTuner CSV analysis
-works for any car."""
+Live USB reading and .kcl editing are verified for the Honda Civic 11th gen 2.0 L (64S ECU). KTuner CSV analysis works
+for any car. For other cars, tune_check reports whether the known .kcl layout looks plausible; with the user's agreement,
+allow_unverified applies it anyway and the user must confirm the changed cells in KTuner before anything else."""
 
 server = MCPServer('agent-tune', version=__version__, instructions=INSTRUCTIONS)
 
@@ -30,8 +32,10 @@ def list_devices() -> dict:
 
 
 @server.tool()
-def record_log(seconds: float = 60, port: str | None = None, out_path: str | None = None) -> dict:
-    """Record live values from the car for up to 900 s (blocks until done). Returns the log path and counts."""
+def record_log(seconds: float = 60, port: str | None = None, out_path: str | None = None,
+               platform: str = telemetry.DEFAULT_PLATFORM) -> dict:
+    """Record live values from the car for up to 900 s (blocks until done). Returns the log path and counts.
+    `platform` is a bundled platform id or the path of a platform .json for a car that is not bundled yet."""
     if not 0 < seconds <= 900:
         raise ValueError('seconds must be between 0 and 900')
     ports = [p['port'] for p in telemetry.find_ports()]
@@ -41,10 +45,14 @@ def record_log(seconds: float = 60, port: str | None = None, out_path: str | Non
     out = Path(out_path or time.strftime('drive-%Y%m%d-%H%M%S.jsonl'))
     handle = telemetry.open_port(name)
     try:
-        summary = telemetry.record(handle, seconds, out)
+        summary = telemetry.record(handle, seconds, out, platform)
     finally:
         handle.close()
-    return {'log': str(out.resolve()), 'summary': summary.as_dict()}
+    result = {'log': str(out.resolve()), 'summary': summary.as_dict()}
+    if summary.frames and not summary.telemetry_frames:
+        result['warning'] = ('Frames were received but none matched the platform layout; they were logged raw. '
+                             'This car may need its own platform file (see CONTRIBUTING.md).')
+    return result
 
 
 @server.tool()
@@ -62,46 +70,48 @@ def compare_logs(before: str, after: str) -> dict:
 
 @server.tool()
 def tune_check(path: str) -> dict:
-    """Is this .kcl supported for editing?"""
+    """Is this .kcl from a verified family? For other files, reports whether the known layout looks plausible."""
     return tune.check(path)
 
 
 @server.tool()
-def tune_tables(path: str) -> list:
-    """Editable tables in a supported .kcl with value counts and ranges."""
-    return tune.tables(path)
+def tune_tables(path: str, allow_unverified: bool = False) -> list:
+    """Editable tables in a .kcl with value counts and ranges."""
+    return tune.tables(path, allow_unverified)
 
 
 @server.tool()
-def tune_cells(path: str, match: str | None = None) -> list:
+def tune_cells(path: str, match: str | None = None, allow_unverified: bool = False) -> list:
     """Editable values (id, label, current value, axis). `match` filters by id pattern or label text."""
-    return tune.cells(path, match)
+    return tune.cells(path, match, allow_unverified)
 
 
 @server.tool()
 def tune_write(path: str, out_path: str, set_values: dict[str, float] | None = None,
                add: dict[str, float] | None = None, scale: dict[str, float] | None = None,
-               note: str | None = None, dry_run: bool = True) -> dict:
+               note: str | None = None, dry_run: bool = True, allow_unverified: bool = False) -> dict:
     """Plan (dry_run=True, default) or write a NEW .kcl. Keys may be cell ids or patterns (e.g. ign-max-h-6000-*).
-    Show the planned changes to the user and get agreement before calling again with dry_run=False."""
-    changes = tune.plan(path, set_values, add, scale)
+    Show the planned changes to the user and get agreement before calling again with dry_run=False.
+    `allow_unverified` applies the known layout to a file from an unverified family; the user must then confirm
+    the changed cells in KTuner."""
+    changes = tune.plan(path, set_values, add, scale, allow_unverified)
     if dry_run:
-        current = {c['id']: c['value'] for c in tune.cells(path)}
+        current = {c['id']: c['value'] for c in tune.cells(path, allow_unverified=allow_unverified)}
         return {'dry_run': True, 'changes': [{'id': k, 'from': current[k], 'to': v} for k, v in changes.items()]}
-    return tune.write(path, changes, out_path, note)
+    return tune.write(path, changes, out_path, note, allow_unverified)
 
 
 @server.tool()
-def suggest_afm(tune_path: str, log_paths: list[str]) -> dict:
-    """Evidence-gated AFM flow (MAF calibration) suggestions from 2+ logs and the tune."""
-    return suggest.afm([logs.load(p) for p in log_paths], tune.afm_curve(tune_path))
+def suggest_afm(tune_path: str, log_paths: list[str], allow_unverified: bool = False) -> dict:
+    """AFM flow (MAF calibration) suggestions from 2+ agreeing logs and the tune."""
+    return suggest.afm([logs.load(p) for p in log_paths], tune.afm_curve(tune_path, allow_unverified))
 
 
 @server.tool()
 def platforms() -> list:
-    """Supported platforms and the channels decoded over USB."""
+    """Bundled platforms and the channels decoded over USB."""
     return [{'id': p['id'], 'name': p['name'], 'channels': [c['name'] for c in p['channels']],
-             'not_decoded': p['not_decoded']} for p in telemetry.platforms().values()]
+             'not_decoded': p.get('not_decoded', [])} for p in telemetry.platforms().values()]
 
 
 def main():

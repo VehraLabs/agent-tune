@@ -1,22 +1,21 @@
-"""Evidence-gated suggestions that map log data onto tune cells.
+"""Suggestions that map log data onto tune cells, gated on enough agreeing evidence.
 
 AFM flow (MAF calibration): per-sample fuel correction = measured/commanded AFR,
 times total fuel trim in closed loop. A factor above 1 means the engine needed
 more fuel than the airflow model predicted, i.e. the curve under-reads flow at
-that frequency. Suggestions require agreement across independent sessions,
-because learned trims drift day to day (reference car: about 9% between days).
+that frequency. Suggestions require agreement across sessions on different
+days, because learned trims drift from day to day.
 """
 import statistics
 
-from .kcl import kcl_afm_curve
+from .kcl import afm_curve
 
 POLICY = {
     'min_samples': 20, 'min_span_s': 5.0, 'deadband_pct': 1.0, 'max_change_pct': 5.0, 'max_spread_pct': 8.0,
     'min_ect_c': 71.0, 'max_tps_rate_pct_s': 40.0, 'max_hz_rate_per_s': 4000.0,
     'min_sessions': 2, 'max_session_disagreement_pct': 3.0,
 }
-AXIS = {'base_hz': 2031.25, 'step_hz': 78.125,
-        'status': 'inferred from rounded KTuner axis labels; exact breakpoints not established'}
+AXIS = {'base_hz': 2031.25, 'step_hz': 78.125, 'note': 'estimated from the rounded axis labels KTuner displays'}
 
 
 def correction_samples(log, policy):
@@ -87,13 +86,13 @@ def afm(logs, curve, policy=None, axis=None):
         if not reasons and abs(change) < policy['deadband_pct']:
             reasons.append('within_deadband')
         clamped = max(-policy['max_change_pct'], min(policy['max_change_pct'], change))
-        points.append({'id': kcl_afm_curve.cell_id(index), 'hz_estimate': axis['base_hz'] + axis['step_hz'] * index,
+        points.append({'id': afm_curve.cell_id(index), 'hz_estimate': axis['base_hz'] + axis['step_hz'] * index,
                        'samples': len(items), 'median_correction_pct': round(change, 2),
                        'per_session_pct': medians, 'current': curve[index],
                        'suggested': None if reasons else round(curve[index] * (1 + clamped / 100), 4),
                        'reasons': reasons})
     final = {p['id']: p['suggested'] for p in points if p['suggested'] is not None}
-    ordered = [kcl_afm_curve.cell_id(i) for i in range(len(curve))]
+    ordered = [afm_curve.cell_id(i) for i in range(len(curve))]
     values = [final.get(cid, curve[i]) for i, cid in enumerate(ordered)]
     for p in points:  # keep the curve strictly increasing
         i = ordered.index(p['id'])

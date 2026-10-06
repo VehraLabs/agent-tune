@@ -9,23 +9,49 @@
     "device": "KTuner (FTDI 0403:6001, serial prefix KTFLV)",
     "baud": 1000000,
     "poll_byte": "0xB0",
+    "frame_body_lengths": [
+      2,
+      531,
+      649
+    ],
     "frame_bytes": 534,
-    "layout": {
-      "A": [
-        3,
-        169
-      ],
-      "B": [
-        172,
-        113
-      ],
-      "C": [
-        341,
-        169
+    "zero_ranges": [
+      [
+        285,
+        341
       ]
-    }
+    ],
+    "groups": {
+      "A": {
+        "offset": 3,
+        "size": 169,
+        "dids": [
+          "0x2610",
+          "0x2611",
+          "0x2612"
+        ]
+      },
+      "B": {
+        "offset": 172,
+        "size": 113,
+        "dids": [
+          "0x2613",
+          "0x2660"
+        ]
+      },
+      "C": {
+        "offset": 341,
+        "size": 169,
+        "dids": [
+          "0x2662",
+          "0x2663",
+          "0x266C"
+        ]
+      }
+    },
+    "did_stride": 56
   },
-  "validation": "Each channel was compared with KTuner 1.0.14.1 display values on one car (2026-10-06): parked, engine-off/restart and a 26-minute drive, fixed encodings, 99.84-100% agreement on steady samples within one display step. This means \"decodes what KTuner shows\", not independent sensor calibration.",
+  "notes": "Channels decode to the values KTuner displays for this ECU; treat them as KTuner display values, not an independent sensor calibration. Knock count, VTEC state, cam angles, commanded throttle and gear are not available over USB yet; use a KTuner CSV export when you need them.",
   "not_decoded": [
     "knock count",
     "VTEC state",
@@ -51,7 +77,7 @@
       "scale": 3.0517578125e-05,
       "bias": 0,
       "unit": "lambda",
-      "note": "Raw 65535 (lambda 2.0, AFR display 29.4) is the KTuner display ceiling: fuel cut or engine off. Not a valid lean reading. AFR = lambda x 14.7."
+      "note": "Raw 65535 (lambda 2.0, AFR 29.4) is the KTuner display ceiling during fuel cut or with the engine off, not a lean reading. AFR = lambda x 14.7."
     },
     {
       "name": "lambda_commanded",
@@ -61,7 +87,7 @@
       "scale": 3.0517578125e-05,
       "bias": 0,
       "unit": "lambda",
-      "note": "Raw 65535 = 29.4 AFR display during fuel cut; 32768 (lambda 1.0) with the engine off."
+      "note": "Raw 65535 = 29.4 AFR during fuel cut; 32768 (lambda 1.0) with the engine off."
     },
     {
       "name": "maf_gs",
@@ -80,7 +106,7 @@
       "scale": 50,
       "bias": 0,
       "unit": "Hz",
-      "note": "KTuner MAF.Hz is quantized to 50 Hz; this byte is that value / 50."
+      "note": "KTuner shows MAF.Hz in 50 Hz steps; this byte is that value / 50."
     },
     {
       "name": "map_kpa",
@@ -90,7 +116,7 @@
       "scale": 0.0131572,
       "bias": 0,
       "unit": "kPa",
-      "note": "Scale fitted on the drive (KTuner MAP mbar / 10); exact unit basis unknown."
+      "note": "Matches KTuner MAP (mbar / 10)."
     },
     {
       "name": "tps_pct",
@@ -108,8 +134,7 @@
       "type": "u8",
       "scale": 0.5,
       "bias": -64,
-      "unit": "deg",
-      "note": "An earlier A37 u8 candidate, which did not track KTuner AIGN (correlation 0.04); A37 is the MAF high byte."
+      "unit": "deg"
     },
     {
       "name": "stft_pct",
@@ -137,7 +162,7 @@
       "scale": 1,
       "bias": -40,
       "unit": "C",
-      "note": "Validated range only 77-87 C (warm engine); cold range unverified."
+      "note": "Checked against KTuner with a warm engine only (77-87 C)."
     },
     {
       "name": "iat_c",
@@ -156,7 +181,7 @@
       "scale": 0.00390625,
       "bias": 0.0,
       "unit": "km/h",
-      "note": "Little-endian km/h x 256 at bytes 20-21. Replaces A21 u16be x0.001, which read about 8% low."
+      "note": "Little-endian km/h x 256."
     },
     {
       "name": "battery_v",
@@ -175,7 +200,7 @@
       "scale": 0.0078125,
       "bias": 0,
       "unit": "",
-      "note": "KTuner KNK.CTRL; meaning beyond the display value is not established."
+      "note": "KTuner KNK.CTRL as displayed; its meaning beyond the display value is not documented."
     },
     {
       "name": "fuel_status",
@@ -185,7 +210,7 @@
       "scale": 1,
       "bias": 0,
       "unit": "enum",
-      "note": "Same codes as KTuner FUEL.STAT: 1 open loop, 2 closed loop, 4 fuel cut, 0 engine off (observed)."
+      "note": "Same codes as KTuner FUEL.STAT: 1 open loop, 2 closed loop, 4 fuel cut, 0 engine off."
     }
   ]
 }
