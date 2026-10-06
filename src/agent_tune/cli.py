@@ -116,12 +116,12 @@ def cmd_mcp(a):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(prog='agent-tune', description='Read car data through your KTuner dongle, analyze it, '
-                                'and write a new .kcl tune file to review and flash in KTuner.')
+    p = argparse.ArgumentParser(prog='agent-tune', description='Your AI tuning assistant for KTuner: how to record a datalog, what it shows, '
+                                'and a new .kcl tune file with the changes you approve. You flash it in KTuner.')
     p.add_argument('--version', action='version', version=__version__)
     sub = p.add_subparsers(dest='cmd', required=True)
-    sub.add_parser('devices', help='find connected KTuner dongles').set_defaults(func=cmd_devices)
-    lg = sub.add_parser('log', help='record live values (KTuner app must be closed)')
+    sub.add_parser('devices', help='find a connected KTuner dongle').set_defaults(func=cmd_devices)
+    lg = sub.add_parser('log', help='record live data with agent-tune (close the KTuner app first)')
     lg.add_argument('--port', help='serial port; default: the single detected KTuner dongle')
     lg.add_argument('--seconds', type=float, default=300)
     lg.add_argument('-o', '--out')
@@ -129,22 +129,22 @@ def build_parser():
                     help='bundled platform id (see `platforms`) or the path of your own platform .json')
     lg.add_argument('--quiet', action='store_true')
     lg.set_defaults(func=cmd_log)
-    gd = sub.add_parser('guide', help='how to record a useful datalog for a goal')
+    gd = sub.add_parser('guide', help='step-by-step instructions for recording a useful datalog')
     gd.add_argument('goal', nargs='?', default='power', choices=sorted(datalog.GOALS))
     gd.set_defaults(func=cmd_guide)
-    ck = sub.add_parser('check-log', help='is a recorded log good enough for a goal? what to redo if not')
+    ck = sub.add_parser('check-log', help='check whether a datalog is good enough, and what to redo if not')
     ck.add_argument('log')
     ck.add_argument('--goal', default='power', choices=sorted(datalog.GOALS))
     ck.set_defaults(func=cmd_check_log)
-    an = sub.add_parser('analyze', help='tuner-style analysis of a log or KTuner CSV export')
+    an = sub.add_parser('analyze', help='read a datalog the way a tuner would and explain what it shows')
     an.add_argument('log')
     an.add_argument('--findings', action='store_true', help='only the plain-language findings')
     an.set_defaults(func=cmd_analyze)
-    cp = sub.add_parser('compare', help='before/after comparison of two logs')
+    cp = sub.add_parser('compare', help='compare datalogs from before and after a change')
     cp.add_argument('before')
     cp.add_argument('after')
     cp.set_defaults(func=cmd_compare)
-    tn = sub.add_parser('tune', help='inspect or edit a KTuner .kcl')
+    tn = sub.add_parser('tune', help='read or edit a KTuner .kcl tune file')
     tn.add_argument('action', choices=['check', 'tables', 'cells', 'set'])
     tn.add_argument('file')
     tn.add_argument('--match', help='cells: id pattern (e.g. ign-max-h-*) or text in the label/table')
@@ -158,13 +158,13 @@ def build_parser():
                     help='apply the known table layout to a .kcl from an unverified family '
                          '(confirm the result in KTuner)')
     tn.set_defaults(func=cmd_tune)
-    sg = sub.add_parser('suggest', help='AFM flow suggestions from two or more agreeing logs plus the tune')
+    sg = sub.add_parser('suggest', help='airflow (AFM) curve suggestions from two or more drives that agree')
     sg.add_argument('--tune', required=True)
     sg.add_argument('--unverified', action='store_true')
     sg.add_argument('logs', nargs='+')
     sg.set_defaults(func=cmd_suggest)
-    sub.add_parser('platforms', help='bundled platforms and the channels decoded over USB').set_defaults(func=cmd_platforms)
-    sub.add_parser('mcp', help='run the MCP server (stdio) for AI agents').set_defaults(func=cmd_mcp)
+    sub.add_parser('platforms', help='cars agent-tune can record live data from, and the values it reads').set_defaults(func=cmd_platforms)
+    sub.add_parser('mcp', help='run the MCP server for AI assistants').set_defaults(func=cmd_mcp)
     return p
 
 
