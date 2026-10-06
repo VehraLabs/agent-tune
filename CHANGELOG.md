@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+* `guide GOAL` explains how to record a useful datalog (method, driving plan, export) and
+  `check-log LOG --goal GOAL` says whether a log is good enough and what to redo. MCP tools
+  `datalog_guide` and `check_log`; the skill now starts with them.
+* README rewritten in plain language for KTuner owners who are not tuners, with a short glossary.
+  Command help text uses the same wording.
+* Demo in `docs/demo.gif` (about 55 seconds), with the scripts that produce it in `demo/`.
+
 ## 0.2.1 - 2026-10-06
 
 * Published on PyPI as `vehra-agent-tune` (the name `agent-tune` is too close to an existing

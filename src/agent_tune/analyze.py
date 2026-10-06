@@ -131,8 +131,9 @@ def analyze(log):
     chans = over['channels']
     if not pulls:
         findings.append({'topic': 'power', 'level': 'info',
-                         'text': 'No full-throttle pulls (TPS >= 80% for 1 s with rising RPM). Power tuning decisions '
-                                 '(timing, WOT fueling, cam) need repeatable full-throttle pulls in the same gear.'})
+                         'text': 'No full-throttle runs in this log. Power tuning (timing, full-throttle fuel, cam) '
+                                 'needs a few runs in the same gear; `agent-tune guide power` explains how to drive '
+                                 'for them.'})
     for i, p in enumerate(pulls, 1):
         if p['afr']:
             med = p['afr']['median']
