@@ -43,3 +43,9 @@ uv run pytest
 
 Keep output keys stable; agents depend on them. Add a test with each behaviour change and a
 line to [CHANGELOG.md](CHANGELOG.md).
+
+Changes go through pull requests, which are squash merged: the PR title becomes the commit on
+`main`. Title every PR in Conventional Commits form, `type(scope): what changed` (types `feat`,
+`fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`; `!` for
+breaking), and keep the PR description accurate, because it becomes the commit body. The
+`pr-title` check enforces the title format.
