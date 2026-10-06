@@ -1,0 +1,191 @@
+{
+  "id": "honda-civic-11g-2.0-64s",
+  "name": "Honda Civic 11th gen 2.0 L NA (64S ECU)",
+  "ecu": {
+    "assembly": "37820-64S-AC10",
+    "calibration": "37805-64S-AC20"
+  },
+  "transport": {
+    "device": "KTuner (FTDI 0403:6001, serial prefix KTFLV)",
+    "baud": 1000000,
+    "poll_byte": "0xB0",
+    "frame_bytes": 534,
+    "layout": {
+      "A": [
+        3,
+        169
+      ],
+      "B": [
+        172,
+        113
+      ],
+      "C": [
+        341,
+        169
+      ]
+    }
+  },
+  "validation": "Each channel was compared with KTuner 1.0.14.1 display values on one car (2026-10-06): parked, engine-off/restart and a 26-minute drive, fixed encodings, 99.84-100% agreement on steady samples within one display step. This means \"decodes what KTuner shows\", not independent sensor calibration.",
+  "not_decoded": [
+    "knock count",
+    "VTEC state",
+    "cam angle (commanded/actual)",
+    "commanded throttle",
+    "gear"
+  ],
+  "channels": [
+    {
+      "name": "rpm",
+      "group": "A",
+      "offset": 9,
+      "type": "u16be",
+      "scale": 0.25,
+      "bias": 0,
+      "unit": "rpm"
+    },
+    {
+      "name": "lambda_measured",
+      "group": "A",
+      "offset": 67,
+      "type": "u16be",
+      "scale": 3.0517578125e-05,
+      "bias": 0,
+      "unit": "lambda",
+      "note": "Raw 65535 (lambda 2.0, AFR display 29.4) is the KTuner display ceiling: fuel cut or engine off. Not a valid lean reading. AFR = lambda x 14.7."
+    },
+    {
+      "name": "lambda_commanded",
+      "group": "A",
+      "offset": 71,
+      "type": "u16be",
+      "scale": 3.0517578125e-05,
+      "bias": 0,
+      "unit": "lambda",
+      "note": "Raw 65535 = 29.4 AFR display during fuel cut; 32768 (lambda 1.0) with the engine off."
+    },
+    {
+      "name": "maf_gs",
+      "group": "A",
+      "offset": 37,
+      "type": "u16be",
+      "scale": 0.01,
+      "bias": 0,
+      "unit": "g/s"
+    },
+    {
+      "name": "maf_hz",
+      "group": "B",
+      "offset": 101,
+      "type": "u8",
+      "scale": 50,
+      "bias": 0,
+      "unit": "Hz",
+      "note": "KTuner MAF.Hz is quantized to 50 Hz; this byte is that value / 50."
+    },
+    {
+      "name": "map_kpa",
+      "group": "A",
+      "offset": 51,
+      "type": "u16be",
+      "scale": 0.0131572,
+      "bias": 0,
+      "unit": "kPa",
+      "note": "Scale fitted on the drive (KTuner MAP mbar / 10); exact unit basis unknown."
+    },
+    {
+      "name": "tps_pct",
+      "group": "A",
+      "offset": 123,
+      "type": "u16be",
+      "scale": 0.005,
+      "bias": 0,
+      "unit": "%"
+    },
+    {
+      "name": "ign_deg",
+      "group": "A",
+      "offset": 24,
+      "type": "u8",
+      "scale": 0.5,
+      "bias": -64,
+      "unit": "deg",
+      "note": "An earlier A37 u8 candidate, which did not track KTuner AIGN (correlation 0.04); A37 is the MAF high byte."
+    },
+    {
+      "name": "stft_pct",
+      "group": "A",
+      "offset": 69,
+      "type": "u8",
+      "scale": 0.78125,
+      "bias": -100,
+      "unit": "%"
+    },
+    {
+      "name": "ltft_pct",
+      "group": "A",
+      "offset": 70,
+      "type": "u8",
+      "scale": 0.78125,
+      "bias": -100,
+      "unit": "%"
+    },
+    {
+      "name": "ect_c",
+      "group": "A",
+      "offset": 14,
+      "type": "u8",
+      "scale": 1,
+      "bias": -40,
+      "unit": "C",
+      "note": "Validated range only 77-87 C (warm engine); cold range unverified."
+    },
+    {
+      "name": "iat_c",
+      "group": "A",
+      "offset": 16,
+      "type": "u8",
+      "scale": 1,
+      "bias": -40,
+      "unit": "C"
+    },
+    {
+      "name": "speed_kph",
+      "group": "A",
+      "offset": 20,
+      "type": "u16le",
+      "scale": 0.00390625,
+      "bias": 0.0,
+      "unit": "km/h",
+      "note": "Little-endian km/h x 256 at bytes 20-21. Replaces A21 u16be x0.001, which read about 8% low."
+    },
+    {
+      "name": "battery_v",
+      "group": "A",
+      "offset": 25,
+      "type": "u8",
+      "scale": 0.1,
+      "bias": 0,
+      "unit": "V"
+    },
+    {
+      "name": "knock_ctrl",
+      "group": "C",
+      "offset": 13,
+      "type": "u8",
+      "scale": 0.0078125,
+      "bias": 0,
+      "unit": "",
+      "note": "KTuner KNK.CTRL; meaning beyond the display value is not established."
+    },
+    {
+      "name": "fuel_status",
+      "group": "A",
+      "offset": 73,
+      "type": "u8",
+      "scale": 1,
+      "bias": 0,
+      "unit": "enum",
+      "note": "Same codes as KTuner FUEL.STAT: 1 open loop, 2 closed loop, 4 fuel cut, 0 engine off (observed)."
+    }
+  ]
+}
