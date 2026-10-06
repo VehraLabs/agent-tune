@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* Demo recording in `docs/demo.gif`, with the scripts that produce it in `demo/` (synthetic logs, simulated dongle, real commands).
+* Short demo in `docs/demo.gif`, with the scripts that produce it in `demo/`.
 
 ## 0.2.0 - 2026-10-06
 

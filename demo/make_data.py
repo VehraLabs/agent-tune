@@ -1,17 +1,13 @@
-"""Synthetic logs for the demo. Not real car data.
+"""Example datalogs for the demo, in KTuner's CSV export format (generated, not recorded).
 
-Writes, in KTuner's CSV export format:
   before.csv  idle, three 2nd-gear full-throttle pulls, coast-downs and cruise
   after.csv   the same drive after a +0.3 AFR change to the high-RPM WOT targets
-and frames.bin, raw dongle replies for the simulated live-logging scene.
 """
 import math
 from pathlib import Path
 import random
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-from agent_tune import telemetry  # noqa: E402
 
 HEADER = ('Time(s),RPM,MAP(mBar),MAP(Conv),MAF.Hz,MAF,PWMDC,TPS,TPS.CMD,CAM.CMD,CAMA,EXCAM.CMD,EXCAMA,AIGN,FDC,FP1,'
           'STFT,LTFT,LAM,LAM.ADJ,LAM.CMD,FUEL.STAT,KNK.C,KNK.CTRL,ECT(F),IAT(F),VSS(MPH),GEAR,BAT,VTEC\n')
@@ -81,43 +77,12 @@ def drive(after=False, seed=1):
     return rows
 
 
-def frames(seconds=8):
-    """Raw dongle replies (B0 framing) for the simulated live-log scene."""
-    out = bytearray()
-    for i in range(int(seconds / 0.07)):
-        a = bytearray(169); a[0] = 0x62
-        for k, did in enumerate((0x2610, 0x2611, 0x2612)):
-            a[1 + 56 * k:3 + 56 * k] = did.to_bytes(2, 'big')
-        rpm = 800 + 12 * math.sin(i / 3)
-        a[9:11] = int(rpm * 4).to_bytes(2, 'big')
-        a[14], a[16], a[25] = 40 + 89, 40 + 35, 142
-        a[51:53] = int(32.0 / 0.0131572).to_bytes(2, 'big')
-        a[67:69] = int((1.0 + 0.01 * math.sin(i / 2)) * 32768).to_bytes(2, 'big')
-        a[71:73] = (32768).to_bytes(2, 'big')
-        a[69], a[70], a[73] = 130, 130, 2
-        a[24] = int((8 + 64) / 0.5)
-        b = bytearray(113); b[0] = 0x62
-        for k, did in enumerate((0x2613, 0x2660)):
-            b[1 + 56 * k:3 + 56 * k] = did.to_bytes(2, 'big')
-        b[101] = 52
-        c = bytearray(169); c[0] = 0x62
-        for k, did in enumerate((0x2662, 0x2663, 0x266C)):
-            c[1 + 56 * k:3 + 56 * k] = did.to_bytes(2, 'big')
-        c[13] = 113
-        body = bytes(a) + bytes(b) + bytes(56) + bytes(c) + bytes(24)
-        out += b'\xb0' + (len(body)).to_bytes(2, 'little') + body
-    return bytes(out)
-
-
 def main(target):
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for name, after in (('before.csv', False), ('after.csv', True)):
         rows = drive(after=after)
         (target / name).write_text(HEADER + ''.join(','.join(map(str, r)) + '\n' for r in rows), encoding='utf-8')
-    (target / 'frames.bin').write_bytes(frames())
-    first = telemetry.B0Stream().feed(frames()[:534])
-    assert first and telemetry.split_groups(first[0]) is not None, 'synthetic frame layout'
     print(f'wrote {target}')
 
 
