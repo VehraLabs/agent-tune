@@ -1,4 +1,4 @@
-"""Record the agent-tune demo (docs/demo.gif, plus an MP4 when imageio-ffmpeg is available).
+"""Record the agent-tune demo as docs/demo.mp4, plus docs/demo-poster.png for the README.
 
 A KTuner owner who wants more power asks what to do. The agent explains how to
 drive for a datalog, checks the log, explains the analysis, proposes one small
@@ -110,7 +110,7 @@ def run(cmd, cwd):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--kcl', default=os.environ.get('DEMO_KCL'), required=os.environ.get('DEMO_KCL') is None)
-    p.add_argument('--out', default=str(ROOT / 'docs' / 'demo.gif'))
+    p.add_argument('--out', default=str(ROOT / 'docs' / 'demo.mp4'))
     a = p.parse_args()
     work = Path(tempfile.mkdtemp(prefix='agent-tune-demo-'))
     subprocess.run([sys.executable, str(ROOT / 'demo' / 'make_data.py'), str(work)], check=True, capture_output=True)
@@ -199,28 +199,30 @@ def main():
     s.card('agent-tune', [('uv tool install "vehra-agent-tune[mcp]"', ACCENT),
                           ('github.com/VehraLabs/agent-tune', DIM)], 3.4)
 
-    out = Path(a.out)
+    import imageio.v2 as imageio
+    import numpy as np
+    out = Path(a.out).with_suffix('.mp4')
     out.parent.mkdir(parents=True, exist_ok=True)
-    sample = Image.new('RGB', (W, H * 4))  # one shared palette so colours do not shift between frames
-    for k, (f, _) in enumerate(s.frames[1::max(1, len(s.frames) // 4)][:4]):
-        sample.paste(f, (0, H * k))
-    palette = sample.quantize(colors=48, method=Image.Quantize.MEDIANCUT)
-    frames = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f, _ in s.frames]
-    frames[0].save(out, save_all=True, append_images=frames[1:], duration=[d for _, d in s.frames],
-                   loop=0, optimize=True, disposal=1)
-    print(f'GIF {out} {out.stat().st_size / 1e6:.1f} MB, {sum(d for _, d in s.frames) / 1000:.1f} s')
-    try:
-        import imageio.v2 as imageio
-        import numpy as np
-        mp4 = out.with_suffix('.mp4')
-        with imageio.get_writer(mp4, fps=25, codec='libx264', quality=8, macro_block_size=8) as writer:
-            for frame, ms in s.frames:
-                arr = np.asarray(frame)
-                for _ in range(max(1, round(ms / 40))):
-                    writer.append_data(arr)
-        print(f'MP4 {mp4} {mp4.stat().st_size / 1e6:.1f} MB')
-    except ImportError:
-        print('MP4 skipped (install imageio and imageio-ffmpeg)')
+    with imageio.get_writer(out, fps=25, codec='libx264', quality=8, macro_block_size=8,
+                            ffmpeg_params=['-movflags', '+faststart', '-pix_fmt', 'yuv420p']) as writer:
+        for frame, ms in s.frames:
+            arr = np.asarray(frame)
+            for _ in range(max(1, round(ms / 40))):
+                writer.append_data(arr)
+    total = sum(ms for _, ms in s.frames) / 1000
+    print(f'MP4 {out} {out.stat().st_size / 1e6:.1f} MB, {total:.0f} s')
+
+    # Poster for the README: the longest-held screen (the driving instructions) with a play button.
+    poster = max(s.frames, key=lambda f: f[1])[0].copy()
+    d = ImageDraw.Draw(poster, 'RGBA')
+    cx, cy, r = W - 170, H - 150, 64
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(224, 102, 27, 235))
+    d.polygon([(cx - 20, cy - 30), (cx - 20, cy + 30), (cx + 32, cy)], fill=FG)
+    label = f'Watch the demo ({total:.0f} s)'
+    d.text((cx - d.textlength(label, font=BOLD) / 2, cy + r + 14), label, font=BOLD, fill=FG)
+    poster_path = out.with_name(out.stem + '-poster.png')
+    poster.save(poster_path, optimize=True)
+    print(f'poster {poster_path}')
     shutil.rmtree(work, ignore_errors=True)
 
 
