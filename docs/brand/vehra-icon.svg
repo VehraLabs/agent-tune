@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title desc" shape-rendering="geometricPrecision">
+  <title id="title">VEHRA cut V icon — vehra-icon.svg</title>
+  <desc id="desc">Monochrome standalone V with a small negative-space diagonal cut.</desc>
+  <defs>
+    <mask id="cut-icon-0" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
+      <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+      <rect x="17" y="38" width="31" height="7" transform="rotate(-30 32.5 41.5)" fill="black"/>
+    </mask>
+  </defs>
+  <path fill="#151517" mask="url(#cut-icon-0)" d="M52.876 88.0 79.876 9.268H63.568L46.396 68.56L28.9 9.268H12.592L39.16 88.0Z"/>
+</svg>

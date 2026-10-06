@@ -1,6 +1,17 @@
+<p align="center">
+  <a href="https://vehra.net">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/brand/vehra-logo-reversed.svg">
+      <img src="docs/brand/vehra-logo.svg" alt="VEHRA" width="180">
+    </picture>
+  </a>
+</p>
+
 # agent-tune
 
 **Tune your car with the KTuner you already own, with an AI agent doing the analysis.**
+
+A [VEHRA](https://vehra.net) project.
 
 [![test](https://github.com/VehraLabs/agent-tune/actions/workflows/test.yml/badge.svg)](https://github.com/VehraLabs/agent-tune/actions/workflows/test.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -146,4 +157,18 @@ uv run pytest
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). The VEHRA name and logo are trademarks of Vehra and are not covered
+by the license; see [docs/brand](docs/brand/README.md).
+
+---
+
+<p align="center">
+  <a href="https://vehra.net">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/brand/vehra-icon-reversed.svg">
+      <img src="docs/brand/vehra-icon.svg" alt="VEHRA" width="28">
+    </picture>
+  </a>
+  <br>
+  <sub>Made by <a href="https://vehra.net">VEHRA</a></sub>
+</p>

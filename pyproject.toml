@@ -24,6 +24,7 @@ agent-tune = "agent_tune.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/VehraLabs/agent-tune"
+Vehra = "https://vehra.net"
 Repository = "https://github.com/VehraLabs/agent-tune"
 Issues = "https://github.com/VehraLabs/agent-tune/issues"
 Changelog = "https://github.com/VehraLabs/agent-tune/blob/main/CHANGELOG.md"
