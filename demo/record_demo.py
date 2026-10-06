@@ -138,7 +138,7 @@ def main():
     s.say('Agent', 'Done. Open step-1.kcl in KTuner, check the changes, and flash it. '
                    'Then log a few pulls and I will compare.', 3.6)
 
-    s.card('agent-tune', [('uv tool install "agent-tune[mcp] @ git+https://github.com/VehraLabs/agent-tune"', ACCENT),
+    s.card('agent-tune', [('uv tool install "vehra-agent-tune[mcp]"', ACCENT),
                           ('github.com/VehraLabs/agent-tune', DIM)], 3.2)
 
     out = Path(a.out)

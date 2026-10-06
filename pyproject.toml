@@ -1,6 +1,6 @@
 [project]
-name = "agent-tune"
-version = "0.2.0"
+name = "vehra-agent-tune"
+version = "0.2.1"
 description = "Read car data through your KTuner dongle, analyze it, and write a new .kcl tune file to review and flash in KTuner. Built for AI agents."
 readme = "README.md"
 license = "MIT"
