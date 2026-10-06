@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2026-10-06
+
+* Published on PyPI as `vehra-agent-tune` (the name `agent-tune` is too close to an existing
+  project). The command is still `agent-tune` and the package is still `agent_tune`.
+
 ## 0.2.0 - 2026-10-06
 
 * New README, CONTRIBUTING, SECURITY and a skill in `skills/agent-tune` for skill-based agents.

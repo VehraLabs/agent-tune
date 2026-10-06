@@ -37,10 +37,15 @@ Python 3.11+ and [uv](https://docs.astral.sh/uv/). Tested on Windows, where KTun
 and tune-file analysis is plain Python and runs anywhere.
 
 ```bash
-uv tool install "agent-tune[mcp] @ git+https://github.com/VehraLabs/agent-tune"
+uv tool install "vehra-agent-tune[mcp]"
 ```
 
-Drop `[mcp]` if you only want the command line.
+Drop `[mcp]` if you only want the command line. The package is published on PyPI as
+`vehra-agent-tune`; the command it installs is `agent-tune`. To install the latest commit instead:
+
+```bash
+uv tool install "vehra-agent-tune[mcp] @ git+https://github.com/VehraLabs/agent-tune"
+```
 
 ## Quick start
 
