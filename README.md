@@ -25,7 +25,7 @@ It is built to be driven by an AI agent: every command prints JSON, and the bund
 MCP server teach the agent the tuning workflow and the safety rules. It works just as well by
 hand.
 
-![agent-tune demo: record a datalog, check it, analyze it, write a new tune file](docs/demo.gif)
+![agent-tune demo: a KTuner owner asks what to do, gets driving instructions for a datalog, and gets one small reviewed change](docs/demo.gif)
 
 **agent-tune never flashes anything.** It never writes to the dongle or the ECU, and it never
 overwrites your original tune.

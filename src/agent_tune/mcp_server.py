@@ -18,7 +18,7 @@ exactly what to redo) -> analyze_log -> discuss findings with the user -> tune_c
 .kcl -> the user opens it in KTuner, reviews and flashes it themselves -> record again and compare_logs.
 Rules: never claim a change is safe; change timing in small steps (<= 1 degree) and only where logs show no knock;
 never add timing where AFR is lean at full throttle; show every change (from -> to) before writing; never overwrite
-the user's original tune; keep the user's stock backup. Power decisions need full-throttle pulls in the same gear.
+the user's original tune; keep the user's stock backup. Power decisions need full-throttle runs in the same gear.
 Live USB reading and .kcl editing are verified for the Honda Civic 11th gen 2.0 L (64S ECU). KTuner CSV analysis works
 for any car. For other cars, tune_check reports whether the known .kcl layout looks plausible; with the user's agreement,
 allow_unverified applies it anyway and the user must confirm the changed cells in KTuner before anything else."""
@@ -59,7 +59,7 @@ def record_log(seconds: float = 60, port: str | None = None, out_path: str | Non
 @server.tool()
 def datalog_guide(goal: str = 'power') -> dict:
     """How to record a useful datalog: what to record with, how to drive, how to export.
-    Goals: power (full-throttle pulls), cruise (fuel trims/AFM), baseline, compare (before/after)."""
+    Goals: power (full-throttle runs), cruise (fuel trims/AFM), baseline, compare (before/after)."""
     return datalog.guide(goal)
 
 

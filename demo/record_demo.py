@@ -1,8 +1,10 @@
-"""Record the short agent-tune demo (docs/demo.gif, plus an MP4 when imageio-ffmpeg is available).
+"""Record the agent-tune demo (docs/demo.gif, plus an MP4 when imageio-ffmpeg is available).
 
-Each step runs the real agent-tune command; the lines on screen are drawn from
-its actual JSON output. The datalog comes from demo/make_data.py. The tune file
-is supplied with --kcl and is never written to the repository.
+A KTuner owner who wants more power asks what to do. The agent explains how to
+drive for a datalog, checks the log, explains the analysis, proposes one small
+change and writes it. Each step runs the real agent-tune command and the lines
+on screen come from its JSON output. The datalog comes from demo/make_data.py;
+the tune file is passed with --kcl and is never written to the repository.
 
   uv run --with pillow --with imageio --with imageio-ffmpeg --with numpy python demo/record_demo.py --kcl PATH
 """
@@ -20,11 +22,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 W, H = 1280, 720
-BG, FG, DIM, ACCENT, OK, USER = '#111113', '#F4F2EE', '#8A8A90', '#E0661B', '#7FB685', '#9CC3E6'
+BG, FG, DIM, ACCENT, OK, USER = '#111113', '#F4F2EE', '#9A9AA0', '#E0661B', '#7FB685', '#9CC3E6'
 FONT_PATH = os.environ.get('DEMO_FONT', r'C:\Windows\Fonts\consola.ttf')
 BOLD_PATH = os.environ.get('DEMO_FONT_BOLD', r'C:\Windows\Fonts\consolab.ttf')
-FONT, BOLD = ImageFont.truetype(FONT_PATH, 24), ImageFont.truetype(BOLD_PATH, 24)
-LINE, TOP, LEFT, COLS = 34, 72, 48, 84
+FONT, BOLD = ImageFont.truetype(FONT_PATH, 21), ImageFont.truetype(BOLD_PATH, 21)
+LINE, TOP, LEFT, COLS = 29, 66, 44, 100
+ROWS = (H - TOP - 12) // LINE
 
 
 class Screen:
@@ -34,20 +37,25 @@ class Screen:
     def render(self, ms, cursor=False):
         img = Image.new('RGB', (W, H), BG)
         d = ImageDraw.Draw(img)
-        d.rectangle([0, 0, W, 44], fill='#1C1C1F')
+        d.rectangle([0, 0, W, 42], fill='#1C1C1F')
         for i, c in enumerate((ACCENT, '#55555A', '#55555A')):
-            d.ellipse([20 + i * 24, 15, 34 + i * 24, 29], fill=c)
+            d.ellipse([20 + i * 24, 14, 34 + i * 24, 28], fill=c)
         d.text((104, 9), 'agent-tune', font=BOLD, fill=FG)
-        for row, (text, color, bold) in enumerate(self.lines[-17:]):
+        visible = self.lines[-ROWS:]
+        for row, (text, color, bold) in enumerate(visible):
             d.text((LEFT, TOP + row * LINE), text, font=BOLD if bold else FONT, fill=color)
-        if cursor and self.lines:
-            row = min(len(self.lines), 17) - 1
-            x = LEFT + d.textlength(self.lines[-1][0], font=FONT)
-            d.rectangle([x + 3, TOP + row * LINE + 3, x + 15, TOP + row * LINE + 27], fill=FG)
+        if cursor and visible:
+            row = len(visible) - 1
+            x = LEFT + d.textlength(visible[-1][0], font=BOLD)
+            d.rectangle([x + 3, TOP + row * LINE + 3, x + 14, TOP + row * LINE + 24], fill=FG)
         self.frames.append((img, ms))
 
+    def clear(self):
+        self.lines = []
+
     def blank(self):
-        self.lines.append(('', FG, False))
+        if self.lines:
+            self.lines.append(('', FG, False))
 
     def say(self, who, text, hold):
         self.blank()
@@ -62,28 +70,33 @@ class Screen:
         for i in range(0, len(text), 4):
             self.lines[-1] = ('$ ' + text[:i + 4], OK, True)
             self.render(35, cursor=True)
-        self.render(350)
+        self.render(400)
 
-    def result(self, rows, hold):
-        for text, color in rows:
-            self.lines.append(('  ' + text, color, False))
-            self.render(160)
-        self.render(int(hold * 1000))
+    def heading(self, text, step_ms=250):
+        self.lines.append(('  ' + text, FG, True))
+        self.render(step_ms)
+
+    def item(self, text, color=FG, indent=4, step_ms=260):
+        hang = ' ' * (indent + 3)
+        for i, part in enumerate(textwrap.wrap(text, COLS - indent - 3)):
+            self.lines.append(((' ' * indent if i == 0 else hang) + part, color, False))
+        self.render(step_ms)
+
+    def hold(self, seconds):
+        self.render(int(seconds * 1000))
 
     def card(self, title, lines, hold):
         img = Image.new('RGB', (W, H), BG)
         d = ImageDraw.Draw(img)
         big = ImageFont.truetype(BOLD_PATH, 56)
         y = 250
-        tw = d.textlength(title, font=big)
-        d.text(((W - tw) / 2, y), title, font=big, fill=FG)
+        d.text(((W - d.textlength(title, font=big)) / 2, y), title, font=big, fill=FG)
         y += 90
         for text, color in lines:
-            tw = d.textlength(text, font=FONT)
-            d.text(((W - tw) / 2, y), text, font=FONT, fill=color)
-            y += 40
+            d.text(((W - d.textlength(text, font=FONT)) / 2, y), text, font=FONT, fill=color)
+            y += 38
         self.frames.append((img, int(hold * 1000)))
-        self.lines = []
+        self.clear()
 
 
 def run(cmd, cwd):
@@ -104,71 +117,98 @@ def main():
     (work / 'before.csv').rename(work / 'drive.csv')
     shutil.copy(a.kcl, work / 'stock.kcl')
     at = [sys.executable, '-m', 'agent_tune']
-
     s = Screen()
-    s.card('agent-tune', [('Tune your car with KTuner and an AI agent', FG)], 2.4)
 
-    s.say('You', 'I want more power. How do I get a datalog?', 1.2)
+    s.card('agent-tune', [('Your AI tuning assistant for KTuner', FG)], 2.6)
+
+    # 1. What to do first: how to drive for a datalog.
+    s.say('You', 'I have a KTuner on my Civic and I want more power. What should I do first?', 2.4)
+    s.say('Agent', 'First we need a datalog: a recording of your engine during a few full-throttle runs. '
+                   'It shows how much fuel and timing the engine gets, and whether it knocks. Here is how to record one.', 4.0)
     guide = run(at + ['guide', 'power'], work)
+    s.clear()
     s.command('agent-tune guide power')
-    s.result([('Record:  KTuner -> Connect -> Record', FG),
-              ('Drive:   warm up 10 min, then 3 pulls in 2nd gear,', FG),
-              ('         2,000 rpm to near redline (only where legal and safe)', FG),
-              ('Export:  Record again to stop -> Export Datalog To CSV', FG)], 2.6)
-    assert any('3 pulls' in step for step in guide['drive'])
+    n = 1
+    s.heading('Before you drive')
+    for step in guide['before_you_drive']:
+        s.item(f'{n}. {step}'); n += 1
+    s.heading('On the road  (only where it is legal and safe)')
+    for step in guide['on_the_road']['steps']:
+        s.item(f'{n}. {step}'); n += 1
+    s.heading('After the drive')
+    for step in guide['after_the_drive'][:-1]:
+        s.item(f'{n}. {step}'); n += 1
+    s.hold(7.0)
 
-    s.lines = []
-    s.say('You', 'Done. Here is drive.csv and my tune.', 1.0)
+    # 2. Check the log, then explain the analysis.
+    s.clear()
+    s.say('You', 'Done. Here is my datalog, drive.csv, and my tune, stock.kcl.', 1.8)
     check = run(at + ['check-log', 'drive.csv', '--goal', 'power'], work)
     s.command('agent-tune check-log drive.csv --goal power')
-    ok = {c['check']: c for c in check['checks']}
-    s.result([(('Ready. ' if check['ready'] else 'Not ready. ') + ok['full-throttle pulls']['detail'].split(' (')[0]
-                + ', engine warm, knock data present', OK if check['ready'] else ACCENT)], 1.4)
+    status = {c['check']: c for c in check['checks']}
+    for name in ('engine warm', 'full-throttle runs', 'knock data'):
+        c = status[name]
+        s.item(f"{'OK ' if c['ok'] else 'NO '} {name}: {c['detail'].split(' (')[0]}", OK if c['ok'] else ACCENT, indent=2)
+    s.item(check['summary'], OK if check['ready'] else ACCENT, indent=2)
+    s.hold(1.6)
     analysis = run(at + ['analyze', 'drive.csv'], work)
     s.command('agent-tune analyze drive.csv')
     pulls = analysis['pulls']
     afr = sum(p['afr']['median'] for p in pulls) / len(pulls)
     knock = sum(1 for e in analysis['knock_events'] if e['kind'] == 'knock_count')
-    s.result([(f'{len(pulls)} full-throttle pulls found', FG),
-              (f'Fuel at full throttle: AFR {afr:.1f}  (rich; power band is 12.5-13.2)', FG),
-              (f'Knock: {"none" if knock == 0 else knock}', FG)], 2.0)
+    s.item(f'{len(pulls)} full-throttle runs in 2nd gear', indent=2)
+    s.item(f'Knock: {"none in any run" if knock == 0 else knock}', indent=2)
+    s.item(f'Fuel at full throttle: AFR {afr:.1f}', indent=2)
+    s.say('Agent', f'Good news: no knock. The fuel is on the rich side near redline: AFR {afr:.1f}, where engines '
+                   'like yours usually make the most power around 12.5 to 13.2. Extra fuel is safe, but it costs '
+                   'a little power.', 5.0)
 
-    s.lines = s.lines[-6:]
+    # 3. Propose one small change and write it.
+    s.clear()
     cells = [c for c in run(at + ['tune', 'cells', 'stock.kcl', '--match', 'wot-h-[56][05]00-*'], work)
              if c['id'].rsplit('-', 1)[1] in ('530', '550', '600')]
-    s.say('Agent', 'Your tune asks for extra fuel near redline. I suggest one small step: '
-                   '+0.3 AFR from 5,000 to 6,500 rpm at full load. Timing stays the same.', 0.6)
+    s.command('agent-tune tune cells stock.kcl --match "wot-h-*"')
     by_rpm = {}
     for c in cells:
         by_rpm.setdefault(c['axis']['RPM'], []).append(c['value'])
-    s.result([(f'{rpm} rpm   AFR {min(v):.1f} -> {min(v) + 0.3:.1f}', DIM) for rpm, v in sorted(by_rpm.items())], 3.4)
-
-    s.say('You', 'Do it.', 0.8)
+    s.heading('Full-throttle fuel target (AFR)     now  ->  suggested')
+    for rpm, values in sorted(by_rpm.items()):
+        s.item(f'at {rpm:>4} rpm{" " * 23}{min(values):4.1f}  ->  {min(values) + 0.3:4.1f}', indent=2)
+    s.say('Agent', 'I suggest one small step: 0.3 leaner at full throttle from 5,000 to 6,500 rpm. Timing stays '
+                   'the same. Shall I write it to a new file?', 3.6)
+    s.say('You', 'Yes, do it.', 1.0)
     adds = []
     for col in ('530', '550', '600'):
         adds += ['--add', f'wot-h-[56][05]00-{col}=0.3']
     written = run(at + ['tune', 'set', 'stock.kcl'] + adds + ['-o', 'step-1.kcl'], work)
     s.command('agent-tune tune set stock.kcl --add ... -o step-1.kcl')
-    s.result([(f'{written["kcl"]} written, {len(written["changes"])} values changed', FG),
-              ('stock.kcl left unchanged', FG)], 1.2)
-    s.say('Agent', 'Done. Open step-1.kcl in KTuner, check the changes, and flash it. '
-                   'Then log a few pulls and I will compare.', 3.6)
+    s.item(f'{written["kcl"]} written: {len(written["changes"])} values changed', OK, indent=2)
+    s.item('stock.kcl unchanged', OK, indent=2)
+    s.hold(1.4)
+
+    # 4. Hand-off.
+    s.clear()
+    s.say('Agent', 'Your new tune is ready. Next:', 0.8)
+    for i, step in enumerate(['Open step-1.kcl in KTuner and check the 12 changed values.',
+                              'Flash it in KTuner, with a healthy battery or a charger connected.',
+                              'Do the same 3 runs, record a new datalog, and send it to me.',
+                              'I will compare the two drives and check for knock before suggesting the next step.'], 1):
+        s.item(f'{i}. {step}', indent=9, step_ms=900)
+    s.hold(4.5)
 
     s.card('agent-tune', [('uv tool install "vehra-agent-tune[mcp]"', ACCENT),
-                          ('github.com/VehraLabs/agent-tune', DIM)], 3.2)
+                          ('github.com/VehraLabs/agent-tune', DIM)], 3.4)
 
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    # One shared palette so colours do not shift between frames.
-    sample = Image.new('RGB', (W, H * 4))
+    sample = Image.new('RGB', (W, H * 4))  # one shared palette so colours do not shift between frames
     for k, (f, _) in enumerate(s.frames[1::max(1, len(s.frames) // 4)][:4]):
         sample.paste(f, (0, H * k))
     palette = sample.quantize(colors=48, method=Image.Quantize.MEDIANCUT)
     frames = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f, _ in s.frames]
     frames[0].save(out, save_all=True, append_images=frames[1:], duration=[d for _, d in s.frames],
                    loop=0, optimize=True, disposal=1)
-    total = sum(d for _, d in s.frames) / 1000
-    print(f'GIF {out} {out.stat().st_size / 1e6:.1f} MB, {total:.1f} s')
+    print(f'GIF {out} {out.stat().st_size / 1e6:.1f} MB, {sum(d for _, d in s.frames) / 1000:.1f} s')
     try:
         import imageio.v2 as imageio
         import numpy as np

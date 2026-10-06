@@ -28,8 +28,9 @@ def drive(pulls=3, ect_f=194, gears=(2, 2, 2), iat_f=(95, 97, 99), cruise_s=60):
 def test_guide_covers_every_goal():
     for goal in datalog.GOALS:
         g = datalog.guide(goal)
-        assert g['drive'] and g['record_with']['steps'] and g['then'].endswith(goal)
-    assert 'pulls' in ' '.join(datalog.guide('power')['drive'])
+        assert g['before_you_drive'] and g['on_the_road']['steps'] and g['after_the_drive']
+        assert g['after_the_drive'][-1].endswith(f'--goal {goal}')
+    assert '3 runs' in ' '.join(datalog.guide('power')['on_the_road']['steps'])
     with pytest.raises(ValueError):
         datalog.guide('drag-race')
 
@@ -41,9 +42,9 @@ def test_good_power_log_is_ready(tmp_path):
 
 def test_idle_only_and_cold_logs_say_what_to_redo(tmp_path):
     idle = datalog.check(write_csv(tmp_path / 'idle.csv', drive(pulls=0)), 'power')
-    assert not idle['ready'] and any('3 pulls' in f for f in idle['fixes'])
+    assert not idle['ready'] and any('3 full-throttle runs' in f for f in idle['fixes'])
     cold = datalog.check(write_csv(tmp_path / 'cold.csv', drive(ect_f=120)), 'power')
-    assert not cold['ready'] and any('Warm up' in f for f in cold['fixes'])
+    assert not cold['ready'] and any('warm the engine' in f for f in cold['fixes'])
 
 
 def test_optional_items_warn_without_blocking(tmp_path):

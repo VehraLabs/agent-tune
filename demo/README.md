@@ -1,9 +1,9 @@
 # Demo
 
-`docs/demo.gif` shows a short session: how to record a datalog (`guide`), checking it
-(`check-log`), analyzing it, looking up the tune, and writing a small reviewed change to a new
-`.kcl` file. Each step runs the real `agent-tune` command and
-the lines on screen come from its output.
+`docs/demo.gif` (about 55 seconds) follows a KTuner owner who wants more power. The agent explains
+how to drive to record a datalog (`guide`), checks the log (`check-log`), explains the analysis,
+proposes one small change, writes it to a new `.kcl` file, and lists the next steps. Each step
+runs the real `agent-tune` command and the lines on screen come from its output.
 
 * `make_data.py` generates the example KTuner CSV datalogs used in the demo.
 * `record_demo.py` runs the session and renders `docs/demo.gif` (and an MP4 next to it when
