@@ -9,7 +9,7 @@
 
 # agent-tune
 
-**Your AI tuning assistant for KTuner.**
+**Tune your car with KTuner and an AI assistant.**
 
 A [VEHRA](https://vehra.net) project.
 
@@ -17,60 +17,31 @@ A [VEHRA](https://vehra.net) project.
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-If you own a KTuner, you already have the tools to tune your car. The hard part is knowing
-what to change. agent-tune helps with that:
+KTuner lets you change almost anything in your car's ECU. Knowing what to change is the hard
+part, and usually that means paying a tuner.
 
-* It tells you **how to record a datalog**: what to press in KTuner and how to drive.
-* It **reads the logs for you, the way a professional tuner would**, and explains what it finds
-  in plain language: is the engine knocking, is the fuel rich or lean, where is there room to
-  improve.
-* It **suggests small, careful changes** and, when you agree, writes them into a **new tune
-  file**.
-* **You stay in control.** You open the new file in KTuner, check it, and flash it yourself.
-  agent-tune never flashes your car and never changes your original tune.
+agent-tune does the tuner's homework. Record a few full-throttle runs with KTuner and give the
+log to your AI assistant. It checks for knock, compares the fuel and ignition timing your engine
+actually got with what makes power, and comes back with specific edits: which table, which
+cells, from what value to what. Say yes, and agent-tune writes them into a new tune file. You
+open it in KTuner, look it over, and flash it. Then you drive the same runs again and see what
+changed.
 
-Use it through an AI assistant such as Claude Code, Codex or OpenClaw, which talks you through
-each step, or run the commands yourself.
+It never flashes the car and never touches your original tune file.
 
-![A KTuner owner asks what to do first, gets driving instructions for a datalog, and gets one small reviewed change](docs/demo.gif)
+[![Watch the demo: a KTuner owner asks what to do first, records a datalog, and gets one small change written to a new tune file](docs/demo-poster.png)](docs/demo.mp4)
 
 > agent-tune works with KTuner hardware and the KTuner app. It is not affiliated with or
 > endorsed by KTuner.
 
-## How it works
-
-1. **Record.** agent-tune tells you how to drive for your goal. For more power, that's a
-   warm-up and three full-throttle runs. You record them with KTuner and export the datalog to
-   a CSV file. agent-tune then checks that the log has what it needs, and tells you exactly
-   what to redo if not.
-2. **Understand.** It goes through the log like a tuner would: full-throttle runs, knock, fuel
-   (AFR), ignition timing, fuel trims and intake temperature. It explains each finding in plain
-   words, with the numbers behind it.
-3. **Change.** It shows the current values in your tune and proposes one small step at a time,
-   with the reason for each. When you say yes, it writes a new `.kcl` tune file plus a list of
-   every value it changed. Your original file is left untouched.
-4. **Flash and check.** You open the new file in KTuner, review it and flash it. Then you
-   record the same runs again, and agent-tune compares before and after so you can see what
-   the change did.
-
 ## What you need
 
-* A KTuner device and the KTuner app, on a Windows laptop.
-* A car KTuner supports. The full workflow, including editing tune files, currently works on
-  the **Honda Civic 11th gen 2.0 L** (non-turbo). For other cars, agent-tune can already read
-  and explain your KTuner datalogs; see [Trying another car](#trying-another-car).
-* Optional: an AI assistant that can use skills or MCP tools. agent-tune also works fine
-  without one.
-
-## What it will and won't do
-
-* It **never flashes** your car and never sends anything to the car except requests to read
-  live data.
-* It **never overwrites** your original tune. Every change goes into a new file you choose.
-* It **never claims a change is safe** or promises a power gain. It suggests small steps,
-  explains why, and asks you to check the result with a new datalog.
-* Tuning for power can damage an engine if done carelessly. Read [Safety](#safety) before you
-  flash anything.
+* A KTuner and the KTuner app on a Windows laptop.
+* A Honda Civic 11th gen 2.0 L (non-turbo) for the full workflow, including editing tune files.
+  On other KTuner-supported cars, agent-tune can already read and explain your datalogs; see
+  [Trying another car](#trying-another-car).
+* An AI assistant that can use skills or MCP, such as Claude Code, Codex or OpenClaw. Optional:
+  every step also works as a command.
 
 ## Get started
 
@@ -90,7 +61,7 @@ uv tool install "vehra-agent-tune[mcp] @ git+https://github.com/VehraLabs/agent-
 
 ### With an AI assistant
 
-Connect it once, then just talk to your assistant.
+Connect it once:
 
 | Assistant | How to connect |
 |---|---|
@@ -98,23 +69,23 @@ Connect it once, then just talk to your assistant.
 | Assistants that use MCP | `claude mcp add agent-tune -- agent-tune mcp`, or run `agent-tune mcp` as a stdio server from any MCP client. |
 | Anything that can run commands | Call `agent-tune` directly. Every command prints JSON. |
 
-Then ask something like: *"I have a KTuner on my Civic and I want more power. What should I
-do first?"* The assistant explains how to record, checks your log, explains what it finds,
-and suggests changes for you to approve.
+Then ask it something like *"I have a KTuner on my Civic and I want more power. What should I
+do first?"* It will tell you how to drive for a log, check what you bring back, and propose
+edits for you to approve.
 
 ### On your own
 
 ```bash
-agent-tune guide power                          # how to record and drive for more power
-agent-tune check-log drive.csv --goal power     # is my log good enough? what to redo if not
-agent-tune analyze drive.csv --findings         # what the log shows, in plain words
-agent-tune tune check stock.kcl                 # can agent-tune edit this tune file?
-agent-tune tune set stock.kcl --add "wot-h-6000-600=0.3" -o step-1.kcl --dry-run   # preview one change
+agent-tune guide power                          # how to drive and record for power
+agent-tune check-log drive.csv --goal power     # does the log have what's needed?
+agent-tune analyze drive.csv --findings         # knock, fuel, timing, room to improve
+agent-tune tune check stock.kcl                 # can this tune file be edited?
+agent-tune tune set stock.kcl --add "wot-h-6000-600=0.3" -o step-1.kcl --dry-run   # preview an edit
 ```
 
-Remove `--dry-run` to write `step-1.kcl` and `step-1.manifest.json`. Open the new file in
-KTuner, check the changed values, and flash it yourself. After driving the same runs again,
-`agent-tune compare before.csv after.csv` shows what changed.
+Without `--dry-run` it writes `step-1.kcl` and `step-1.manifest.json`, which lists every value
+it changed. After flashing and driving the same runs again, `agent-tune compare before.csv
+after.csv` shows the difference.
 
 ## A few terms
 
@@ -136,10 +107,9 @@ KTuner, check the changed values, and flash it yourself. After driving the same 
 
 | What | Cars |
 |---|---|
-| Recording guides and log checks | Any car KTuner supports |
-| Explaining KTuner datalogs (CSV export): runs, knock, AFR, timing, fuel trims, before/after | Any car KTuner supports |
-| Recording live data with agent-tune instead of the KTuner app | Honda Civic 11th gen 2.0 L (64S ECU) |
-| Reading and editing tune files: 1,502 values, including ignition timing, full-throttle fuel (WOT enrichment), intake cam (VTC), VTEC, rev limits, fuel cut, airflow (AFM) curve and cylinder trims | Honda Civic 11th gen 2.0 L (64S ECU, 37805-64S-AC20), KTuner 1.0.14.1 save files |
+| Reading KTuner datalogs (CSV export): full-throttle runs, knock, AFR, timing, fuel trims, before/after | Any car KTuner supports |
+| Logging live data without the KTuner app | Honda Civic 11th gen 2.0 L (64S ECU) |
+| Editing tune files: 1,502 values, including ignition timing, full-throttle fuel (WOT enrichment), intake cam (VTC), VTEC, rev limits, fuel cut, airflow (AFM) curve and cylinder trims | Honda Civic 11th gen 2.0 L (64S ECU, 37805-64S-AC20), KTuner 1.0.14.1 save files |
 
 When agent-tune records live data itself, it reads RPM, measured and commanded lambda (AFR),
 MAF (g/s and Hz), MAP, throttle position, ignition timing, short and long-term fuel trims,
@@ -150,11 +120,9 @@ change needs the knock count.
 
 ### Trying another car
 
-agent-tune has been verified on one car so far, and it is built so you can try yours and
-report back.
+So far agent-tune has been verified on one car. Here is how to try yours.
 
-* **Datalogs.** Guides, log checks and explanations already work for any car with a KTuner CSV
-  export. For recording with agent-tune itself, `agent-tune log` keeps every reply the dongle
+* **Datalogs.** Anything that reads a KTuner CSV export already works on any car. For recording with agent-tune itself, `agent-tune log` keeps every reply the dongle
   sends, including ones it doesn't recognize yet, so they can be matched against a KTuner
   datalog later. You can also give it your own channel layout with `--platform my-car.json`,
   starting from [the bundled file](src/agent_tune/platforms/honda_civic_11g_20_64s.json).

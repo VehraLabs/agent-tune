@@ -12,6 +12,12 @@ other cars, and new verified `.kcl` families.
   other than the live-data poll, and never anything that flashes.
 * Every command prints JSON. Keep output stable and self-describing; agents depend on it.
 * One behaviour per pull request, with a test. `main` only takes pull requests with green CI.
+* Pull requests are squash merged, so the PR title becomes the commit on `main`. Titles
+  follow [Conventional Commits](https://www.conventionalcommits.org): `type(scope): what changed`,
+  for example `feat: add check-log`, `fix(tune): refuse unverified writes without the flag`,
+  `docs: rewrite the README intro`. Types: `feat`, `fix`, `docs`, `style`, `refactor`,
+  `perf`, `test`, `build`, `ci`, `chore`, `revert`; add `!` for a breaking change. A check
+  on every pull request enforces this. Commits inside a branch can be anything.
 * Be kind; see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Development

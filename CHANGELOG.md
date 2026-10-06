@@ -7,7 +7,9 @@
   `datalog_guide` and `check_log`; the skill now starts with them.
 * README rewritten in plain language for KTuner owners who are not tuners, with a short glossary.
   Command help text uses the same wording.
-* Demo in `docs/demo.gif` (about 55 seconds), with the scripts that produce it in `demo/`.
+* Demo video in `docs/demo.mp4` (about 55 seconds), with the scripts that produce it in `demo/`.
+* Repository: pull requests are squash merged and titled in Conventional Commits form
+  (`feat:`, `fix:`, ...), checked by the `pr-title` workflow.
 
 ## 0.2.1 - 2026-10-06
 
