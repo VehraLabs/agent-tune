@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 
-from . import __version__, analyze, logs, suggest, telemetry, tune
+from . import __version__, analyze, datalog, logs, suggest, telemetry, tune
 
 
 def emit(data):
@@ -62,6 +62,14 @@ def cmd_log(a):
                              f'({a.platform}). They were logged raw. This car may need its own platform file; '
                              'see CONTRIBUTING.md.')
     emit(result)
+
+
+def cmd_guide(a):
+    emit(datalog.guide(a.goal))
+
+
+def cmd_check_log(a):
+    emit(datalog.check(logs.load(a.log), a.goal))
 
 
 def cmd_analyze(a):
@@ -121,6 +129,13 @@ def build_parser():
                     help='bundled platform id (see `platforms`) or the path of your own platform .json')
     lg.add_argument('--quiet', action='store_true')
     lg.set_defaults(func=cmd_log)
+    gd = sub.add_parser('guide', help='how to record a useful datalog for a goal')
+    gd.add_argument('goal', nargs='?', default='power', choices=sorted(datalog.GOALS))
+    gd.set_defaults(func=cmd_guide)
+    ck = sub.add_parser('check-log', help='is a recorded log good enough for a goal? what to redo if not')
+    ck.add_argument('log')
+    ck.add_argument('--goal', default='power', choices=sorted(datalog.GOALS))
+    ck.set_defaults(func=cmd_check_log)
     an = sub.add_parser('analyze', help='tuner-style analysis of a log or KTuner CSV export')
     an.add_argument('log')
     an.add_argument('--findings', action='store_true', help='only the plain-language findings')

@@ -25,7 +25,7 @@ It is built to be driven by an AI agent: every command prints JSON, and the bund
 MCP server teach the agent the tuning workflow and the safety rules. It works just as well by
 hand.
 
-![agent-tune demo: analyze a datalog, propose a change, write a new tune file](docs/demo.gif)
+![agent-tune demo: record a datalog, check it, analyze it, write a new tune file](docs/demo.gif)
 
 **agent-tune never flashes anything.** It never writes to the dongle or the ECU, and it never
 overwrites your original tune.
@@ -52,8 +52,10 @@ uv tool install "vehra-agent-tune[mcp] @ git+https://github.com/VehraLabs/agent-
 ## Quick start
 
 ```bash
+agent-tune guide power                               # how to record and drive for a goal
 agent-tune devices                                   # find the dongle
 agent-tune log --seconds 600 -o drive.jsonl          # KTuner app closed, ignition ON
+agent-tune check-log drive.jsonl --goal power        # good enough? what to redo if not
 agent-tune analyze drive.jsonl --findings            # or a KTuner CSV export
 agent-tune tune check stock.kcl                      # is this tune file supported?
 agent-tune tune set stock.kcl --add "ign-max-h-6000-*=0.5" -o plus-half.kcl --dry-run
@@ -64,8 +66,9 @@ KTuner, review the changed cells, and flash it yourself.
 
 ## How it fits together
 
-1. **Read.** `log` polls the dongle for live values and keeps the raw bytes in a `.jsonl` log.
-   Or export a datalog from KTuner as CSV, which works for any car KTuner supports.
+1. **Record.** `guide` tells you how to record and drive for your goal (power, cruise, baseline
+   or before/after). Record with KTuner and export CSV, or with `log` on supported cars. Then
+   `check-log` says whether the log is good enough and what to redo if not.
 2. **Analyze.** `analyze` finds full-throttle pulls and reports knock, AFR, timing, fuel trims
    and intake heat as plain-language findings with the numbers behind them.
 3. **Change.** `tune cells` shows current values. `tune set` writes a new `.kcl` plus a manifest
@@ -126,6 +129,8 @@ Please never share tune files, VINs or serial numbers.
 |---|---|
 | `devices` | Find connected KTuner dongles |
 | `log [--seconds N] [-o FILE] [--platform ID\|FILE.json]` | Record live values to a `.jsonl` log |
+| `guide [power\|cruise\|baseline\|compare]` | How to record a useful datalog: method, driving plan, export |
+| `check-log LOG [--goal GOAL]` | Is the log good enough for the goal, and what to redo if not |
 | `analyze LOG [--findings]` | Tuner-style analysis of a log or KTuner CSV export |
 | `compare BEFORE AFTER` | Before/after by RPM bin: acceleration, AFR, timing, knock |
 | `tune check FILE` | Is this `.kcl` supported? Plausibility report otherwise |

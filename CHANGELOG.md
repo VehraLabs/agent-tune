@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* `guide GOAL` explains how to record a useful datalog (method, driving plan, export) and
+  `check-log LOG --goal GOAL` says whether a log is good enough and what to redo. MCP tools
+  `datalog_guide` and `check_log`; the skill now starts with them.
 * Short demo in `docs/demo.gif`, with the scripts that produce it in `demo/`.
 
 ## 0.2.1 - 2026-10-06

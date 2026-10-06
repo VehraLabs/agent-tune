@@ -108,7 +108,22 @@ def main():
     s = Screen()
     s.card('agent-tune', [('Tune your car with KTuner and an AI agent', FG)], 2.4)
 
-    s.say('You', 'I want more power. Here is my KTuner datalog and my tune.', 2.0)
+    s.say('You', 'I want more power. How do I get a datalog?', 1.2)
+    guide = run(at + ['guide', 'power'], work)
+    s.command('agent-tune guide power')
+    s.result([('Record:  KTuner -> Connect -> Record', FG),
+              ('Drive:   warm up 10 min, then 3 pulls in 2nd gear,', FG),
+              ('         2,000 rpm to near redline (only where legal and safe)', FG),
+              ('Export:  Record again to stop -> Export Datalog To CSV', FG)], 2.6)
+    assert any('3 pulls' in step for step in guide['drive'])
+
+    s.lines = []
+    s.say('You', 'Done. Here is drive.csv and my tune.', 1.0)
+    check = run(at + ['check-log', 'drive.csv', '--goal', 'power'], work)
+    s.command('agent-tune check-log drive.csv --goal power')
+    ok = {c['check']: c for c in check['checks']}
+    s.result([(('Ready. ' if check['ready'] else 'Not ready. ') + ok['full-throttle pulls']['detail'].split(' (')[0]
+                + ', engine warm, knock data present', OK if check['ready'] else ACCENT)], 1.4)
     analysis = run(at + ['analyze', 'drive.csv'], work)
     s.command('agent-tune analyze drive.csv')
     pulls = analysis['pulls']
@@ -116,8 +131,9 @@ def main():
     knock = sum(1 for e in analysis['knock_events'] if e['kind'] == 'knock_count')
     s.result([(f'{len(pulls)} full-throttle pulls found', FG),
               (f'Fuel at full throttle: AFR {afr:.1f}  (rich; power band is 12.5-13.2)', FG),
-              (f'Knock: {"none" if knock == 0 else knock}', FG)], 2.4)
+              (f'Knock: {"none" if knock == 0 else knock}', FG)], 2.0)
 
+    s.lines = s.lines[-6:]
     cells = [c for c in run(at + ['tune', 'cells', 'stock.kcl', '--match', 'wot-h-[56][05]00-*'], work)
              if c['id'].rsplit('-', 1)[1] in ('530', '550', '600')]
     s.say('Agent', 'Your tune asks for extra fuel near redline. I suggest one small step: '
@@ -143,7 +159,12 @@ def main():
 
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    frames = [f.quantize(colors=16, method=Image.Quantize.MEDIANCUT) for f, _ in s.frames]
+    # One shared palette so colours do not shift between frames.
+    sample = Image.new('RGB', (W, H * 4))
+    for k, (f, _) in enumerate(s.frames[1::max(1, len(s.frames) // 4)][:4]):
+        sample.paste(f, (0, H * k))
+    palette = sample.quantize(colors=48, method=Image.Quantize.MEDIANCUT)
+    frames = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f, _ in s.frames]
     frames[0].save(out, save_all=True, append_images=frames[1:], duration=[d for _, d in s.frames],
                    loop=0, optimize=True, disposal=1)
     total = sum(d for _, d in s.frames) / 1000

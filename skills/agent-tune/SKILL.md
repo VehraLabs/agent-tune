@@ -26,12 +26,13 @@ instead, the tool names in brackets map one to one.
    `--unverified` [`allow_unverified`], and then they must confirm every changed cell in KTuner
    before anything else. If the layout does not fit, you can still analyze KTuner CSV exports
    and give a change list for them to enter in KTuner by hand.
-3. **Get data**: `agent-tune devices` [`list_devices`], then
-   `agent-tune log --seconds N -o drive.jsonl` [`record_log`] with the KTuner app closed,
-   ignition ON and the engine running for driving data. The driver must not touch the laptop
-   while moving. Or use their KTuner CSV export; `analyze` takes either. Power work needs
-   full-throttle pulls, for example 2nd or 3rd gear from about 2,000 rpm to near redline,
-   repeated, only where it is legal and safe.
+3. **Get data**: run `agent-tune guide GOAL` [`datalog_guide`] for the owner's goal (`power`,
+   `cruise`, `baseline` or `compare`) and walk them through it: how to record (KTuner datalog
+   exported to CSV, or `agent-tune log` [`record_log`] with the KTuner app closed), how to
+   drive, and how to export. The driver must not touch the laptop while moving, and
+   full-throttle runs happen only where legal and safe. When they have a log, run
+   `agent-tune check-log LOG --goal GOAL` [`check_log`]. If it is not ready, tell them exactly
+   what to redo from its `fixes` instead of analyzing an unsuitable log.
 4. **Analyze**: `agent-tune analyze drive.jsonl` [`analyze_log`]. Explain the findings in plain
    language with the numbers.
 5. **Propose**: look up current values with `agent-tune tune cells FILE --match PATTERN`

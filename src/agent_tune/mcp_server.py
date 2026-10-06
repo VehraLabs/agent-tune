@@ -9,11 +9,12 @@ import time
 
 from mcp.server.mcpserver import MCPServer
 
-from . import __version__, analyze, logs, suggest, telemetry, tune
+from . import __version__, analyze, datalog, logs, suggest, telemetry, tune
 
 INSTRUCTIONS = """agent-tune reads car data through the user's KTuner dongle and writes new KTuner .kcl tune files.
-Workflow: list_devices -> record_log (KTuner app closed, ignition ON) or use the user's KTuner CSV export ->
-analyze_log -> discuss findings with the user -> tune_cells to see current values -> tune_write (dry_run first) a NEW
+Workflow: datalog_guide (tell the user how to record and drive for their goal) -> the user records with KTuner and
+exports CSV, or list_devices -> record_log (KTuner app closed, ignition ON) -> check_log (if not ready, tell the user
+exactly what to redo) -> analyze_log -> discuss findings with the user -> tune_cells to see current values -> tune_write (dry_run first) a NEW
 .kcl -> the user opens it in KTuner, reviews and flashes it themselves -> record again and compare_logs.
 Rules: never claim a change is safe; change timing in small steps (<= 1 degree) and only where logs show no knock;
 never add timing where AFR is lean at full throttle; show every change (from -> to) before writing; never overwrite
@@ -53,6 +54,19 @@ def record_log(seconds: float = 60, port: str | None = None, out_path: str | Non
         result['warning'] = ('Frames were received but none matched the platform layout; they were logged raw. '
                              'This car may need its own platform file (see CONTRIBUTING.md).')
     return result
+
+
+@server.tool()
+def datalog_guide(goal: str = 'power') -> dict:
+    """How to record a useful datalog: what to record with, how to drive, how to export.
+    Goals: power (full-throttle pulls), cruise (fuel trims/AFM), baseline, compare (before/after)."""
+    return datalog.guide(goal)
+
+
+@server.tool()
+def check_log(path: str, goal: str = 'power') -> dict:
+    """Is a recorded log good enough for the goal? Returns each requirement and what to redo."""
+    return datalog.check(logs.load(path), goal)
 
 
 @server.tool()
