@@ -1,4 +1,4 @@
-"""Record the agent-tune demo as docs/demo.mp4, plus docs/demo-poster.png for the README.
+"""Record the agent-tune demo as docs/demo.gif (shown in the README) and docs/demo.mp4.
 
 A KTuner owner who wants more power asks what to do. The agent explains how to
 drive for a datalog, checks the log, explains the analysis, proposes one small
@@ -212,17 +212,16 @@ def main():
     total = sum(ms for _, ms in s.frames) / 1000
     print(f'MP4 {out} {out.stat().st_size / 1e6:.1f} MB, {total:.0f} s')
 
-    # Poster for the README: the longest-held screen (the driving instructions) with a play button.
-    poster = max(s.frames, key=lambda f: f[1])[0].copy()
-    d = ImageDraw.Draw(poster, 'RGBA')
-    cx, cy, r = W - 170, H - 150, 64
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(224, 102, 27, 235))
-    d.polygon([(cx - 20, cy - 30), (cx - 20, cy + 30), (cx + 32, cy)], fill=FG)
-    label = f'Watch the demo ({total:.0f} s)'
-    d.text((cx - d.textlength(label, font=BOLD) / 2, cy + r + 14), label, font=BOLD, fill=FG)
-    poster_path = out.with_name(out.stem + '-poster.png')
-    poster.save(poster_path, optimize=True)
-    print(f'poster {poster_path}')
+    # GIF for the README (GitHub plays GIFs inline). One shared palette keeps colours stable.
+    sample = Image.new('RGB', (W, H * 4))
+    for k, (f, _) in enumerate(s.frames[1::max(1, len(s.frames) // 4)][:4]):
+        sample.paste(f, (0, H * k))
+    palette = sample.quantize(colors=48, method=Image.Quantize.MEDIANCUT)
+    frames = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f, _ in s.frames]
+    gif = out.with_suffix('.gif')
+    frames[0].save(gif, save_all=True, append_images=frames[1:], duration=[ms for _, ms in s.frames],
+                   loop=0, optimize=True, disposal=1)
+    print(f'GIF {gif} {gif.stat().st_size / 1e6:.1f} MB')
     shutil.rmtree(work, ignore_errors=True)
 
 
