@@ -5,9 +5,11 @@ dist/
 build/
 *.egg-info/
 .pytest_cache/
-# never commit personal data
+# never commit personal data: tune files, logs, manifests
 *.kcl
 *.kdlg
 *.jsonl
+*.csv
+*.manifest.json
 /logs/
 /tunes/

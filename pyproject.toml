@@ -1,13 +1,13 @@
 [project]
 name = "agent-tune"
 version = "0.1.0"
-description = "Let your AI agent read car data through your KTuner dongle, analyze it, and write reviewed .kcl changes for KTuner."
+description = "Read car data through your KTuner dongle, analyze it, and write a new .kcl tune file to review and flash in KTuner. Built for AI agents."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "Vehra" }]
-keywords = ["ktuner", "honda", "tuning", "ecu", "mcp", "ai-agent"]
+keywords = ["ktuner", "honda", "tuning", "ecu", "datalog", "mcp", "ai-agent", "skill"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: Microsoft :: Windows",
@@ -23,7 +23,10 @@ mcp = ["mcp>=2,<3"]
 agent-tune = "agent_tune.cli:main"
 
 [project.urls]
+Homepage = "https://github.com/VehraLabs/agent-tune"
 Repository = "https://github.com/VehraLabs/agent-tune"
+Issues = "https://github.com/VehraLabs/agent-tune/issues"
+Changelog = "https://github.com/VehraLabs/agent-tune/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]

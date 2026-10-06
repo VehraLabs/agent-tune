@@ -159,8 +159,8 @@ def analyze(log):
         findings.append({'topic': 'knock', 'level': 'info', 'text': 'Knock count never increased in this log.'})
     if 'knock_count' not in chans:
         findings.append({'topic': 'knock', 'level': 'info',
-                         'text': 'This log has no knock count channel (USB logs on the reference platform do not decode it yet; '
-                                 'KTuner CSV exports include KNK.C). Use a KTuner CSV for timing decisions.'})
+                         'text': 'This log has no knock count channel. USB logs do not include it yet; KTuner CSV '
+                                 'exports do (KNK.C). Use a KTuner CSV for timing decisions.'})
     big = [c for c in trims if abs(c['median_total_trim_pct']) >= 8]
     if big:
         findings.append({'topic': 'fueling', 'level': 'note',
@@ -171,8 +171,8 @@ def analyze(log):
                          'text': f"Intake air reached {chans['iat_c']['max']:.0f} C. Hot intake air reduces power and "
                                  'knock margin; compare pulls at similar intake temperatures.'})
     return {'overview': over, 'pulls': pulls, 'knock_events': knocks[:200], 'fuel_trims': trims, 'findings': findings,
-            'disclaimer': 'Evidence summary only. Changes are made by the user in KTuner (or via agent-tune tune set) and '
-                          'flashed by the user in KTuner.'}
+            'disclaimer': 'Analysis only. Changes are written to a new file with agent-tune or entered in KTuner, and '
+                          'flashed by the owner in KTuner.'}
 
 
 def compare(before, after):

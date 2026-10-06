@@ -8,6 +8,7 @@ import threading
 import pytest
 
 from agent_tune import analyze, cli, logs, suggest, telemetry, tune
+from agent_tune.kcl import decode, patch
 
 HEADER = 'Time(s),RPM,MAP(mBar),MAF.Hz,MAF,TPS,AIGN,STFT,LTFT,LAM,LAM.CMD,FUEL.STAT,KNK.C,KNK.CTRL,ECT(F),IAT(F),VSS(MPH)\n'
 
@@ -75,11 +76,33 @@ def test_record_sends_only_b0(tmp_path):
     port = FakePort([reply] * 5)
     out = tmp_path / 'x.jsonl'
     summary = telemetry.record(port, 0.3, out, interval=0.02)
-    assert set(port.writes) == {b'\xb0'} and summary.telemetry_frames == 5
+    assert set(port.writes) == {b'\xb0'} and summary.telemetry_frames == 5 and summary.unknown_frames == 0
     log = logs.load(out)
     assert log.source == 'agent-tune-usb' and log.rows[0]['ch']['rpm'] == 1500
     with pytest.raises(FileExistsError):
         telemetry.record(FakePort([]), 0.1, out)
+
+
+def test_unknown_frames_are_logged_raw(tmp_path):
+    body = bytes(531)  # right length, but not the platform layout
+    reply = b'\xb0' + (531).to_bytes(2, 'little') + body
+    out = tmp_path / 'u.jsonl'
+    summary = telemetry.record(FakePort([reply] * 3), 0.3, out, interval=0.02)
+    assert summary.frames == 3 and summary.telemetry_frames == 0 and summary.unknown_frames == 3
+    lines = [json.loads(l) for l in out.read_text().splitlines()]
+    assert lines[1]['frame'] == reply.hex()
+    with pytest.raises(ValueError, match='no decoded frames'):
+        logs.load(out)
+
+
+def test_platform_from_json_path(tmp_path):
+    custom = dict(telemetry.platform(), id='my-car')
+    custom['channels'] = [c for c in custom['channels'] if c['name'] == 'rpm']
+    path = tmp_path / 'my-car.json'
+    path.write_text(json.dumps(custom), encoding='utf-8')
+    assert set(telemetry.decode_groups(telemetry.split_groups(frame(rpm=3200), str(path)), str(path))) == {'rpm'}
+    with pytest.raises(ValueError, match='Unknown platform'):
+        telemetry.platform('nope')
 
 
 def test_ceiling_and_units(tmp_path):
@@ -159,7 +182,7 @@ def test_mcp_server_lists_tools():
     from agent_tune import mcp_server
     tools = asyncio.run(mcp_server.server.list_tools())
     names = {t.name for t in tools}
-    assert {'list_devices', 'record_log', 'analyze_log', 'compare_logs', 'tune_check', 'tune_cells',
+    assert {'list_devices', 'record_log', 'analyze_log', 'compare_logs', 'tune_check', 'tune_tables', 'tune_cells',
             'tune_write', 'suggest_afm', 'platforms'} <= names
 
 
@@ -184,4 +207,50 @@ def test_kcl_roundtrip(tmp_path):
 def test_unsupported_kcl_is_refused(tmp_path):
     bad = tmp_path / 'bad.kcl'
     bad.write_bytes(b'not a tune')
-    assert tune.check(bad)['supported'] is False
+    result = tune.check(bad)
+    assert result['supported'] is False and 'KTUNERK' in result['reason']
+    with pytest.raises(ValueError):
+        tune.cells(bad, allow_unverified=True)
+
+
+def test_cell_definitions_are_consistent():
+    width = {'float32-le': 4, 'u8-reciprocal': 1}
+    assert len(patch.CELLS) == 1502
+    masked = set()
+    for first, last in decode.MASKED:
+        masked.update(range(first, last))
+    owner = {}
+    for cell_id, cell in patch.CELLS.items():
+        for offset in cell.get('linked_offsets') or [cell['offset']]:
+            for b in range(offset, offset + width.get(cell['encoding'], 2)):
+                assert decode.START <= b < decode.END, cell_id
+                assert b in masked, f'{cell_id} byte {b} is not excluded from the family fingerprint'
+                assert owner.setdefault(b, cell_id) == cell_id, f'{cell_id} overlaps {owner[b]}'
+        assert cell['label'] and cell['table'] and isinstance(cell['axis'], dict), cell_id
+
+
+def test_plan_changes_byte_deltas():
+    values = {k: 20.0 if v['encoding'] == 'i16-le-scale10' else 14.7 if v['encoding'] == 'u8-reciprocal'
+              else 1.0 if v['encoding'] == 'float32-le' else 0.0 if v['encoding'] == 'u16-le-trim'
+              else 100.0 if v['encoding'] == 'u16-le-mbar' else 3000 for k, v in patch.CELLS.items()}
+    values.update({'rev-high-limit': 6800, 'rev-high-restart': 6600, 'rev-low-limit': 4800, 'rev-low-restart': 4200,
+                   'vtec-lower-engage': 5400, 'vtec-lower-disengage': 5100, 'ect-high-104': 1.5})
+    decoded = {'values': values,
+               'rev_linked': {o: values[n] for n, offs in patch.rev_limits.GROUPS.items() for o in offs},
+               'vtec_linked': {o: values[n] for n, offs in patch.vtec.GROUPS.items() for o in offs},
+               'map_counts': {k: 760 for k, v in patch.CELLS.items() if v['encoding'] == 'u16-le-mbar'},
+               'trim_counts': {k: 32768 for k, v in patch.CELLS.items() if v['encoding'] == 'u16-le-trim'}}
+    changes, edits = patch.plan_changes({'ign-base-l-500-131': 20.5, 'wot-h-6500-600': 12.5, 'rev-high-limit': 7000,
+                                         'cylinder-trim-1': 1.0, 'fuel-map-low-cut-rpm-1500': 150}, decoded)
+    assert changes[410515] == 5                       # 200 -> 205 counts, low byte only
+    wot = patch.CELLS['wot-h-6500-600']
+    assert wot['offset'] == 426834 + 18 + 9 * 20 and wot['offset'] in changes  # row 18 (6500 rpm), column 9 (600)
+    assert abs({e['cell']: e['encoded_value'] for e in edits}['wot-h-6500-600'] - 12.5) < 0.05
+    for o in patch.rev_limits.GROUPS['rev-high-limit']:  # 6800 (0x1A90) -> 7000 (0x1B58) in every linked copy
+        assert (changes[o], changes[o + 1]) == (0x58 - 0x90, 1)
+    assert {e['cell']: e['encoded_value'] for e in edits}['cylinder-trim-1'] == pytest.approx(1.0, abs=0.01)
+    assert {e['cell']: e['encoded_storage_count'] for e in edits}['fuel-map-low-cut-rpm-1500'] == 1140
+    with pytest.raises(ValueError, match='accepts only'):
+        patch.plan_changes({'ect-high-104': 0.7}, decoded)
+    with pytest.raises(ValueError, match='below High Limit'):
+        patch.plan_changes({'rev-high-restart': 6900}, decoded)

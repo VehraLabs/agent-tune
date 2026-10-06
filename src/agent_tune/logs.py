@@ -1,9 +1,8 @@
 """Load logs into one shape: rows of {t, ch} with common channel names and units.
 
 Sources:
-  * agent-tune USB logs (`agent-tune log`), re-decoded from raw bytes
-  * KTuner CSV exports (any KTuner-supported car; known columns mapped, others kept)
-  * vehicle-lab decoded USB logs (A/B/C rows with raw payloads)
+  * agent-tune USB logs (`agent-tune log`), re-decoded from the raw bytes they keep
+  * KTuner CSV exports (any car KTuner supports; known columns are mapped, others kept)
 
 Units: rpm, kPa, g/s, Hz, %, degrees, deg C, km/h, V. AFR values at KTuner's 29.4
 display ceiling (fuel cut or engine off) are removed and flagged `afr_ceiling`.
@@ -44,7 +43,7 @@ UNITS = {'rpm': 'rpm', 'map_kpa': 'kPa', 'maf_hz': 'Hz', 'maf_gs': 'g/s', 'tps_p
 class Log:
     name: str
     sha256: str
-    source: str  # 'agent-tune-usb', 'ktuner-csv', 'vehicle-lab-usb'
+    source: str  # 'agent-tune-usb' or 'ktuner-csv'
     rows: list
     platform: str | None = None
     notes: list = field(default_factory=list)
@@ -123,28 +122,26 @@ def parse_usb_log(data, name='log.jsonl'):
     lines = [json.loads(line) for line in data.decode('utf-8').splitlines() if line.strip()]
     if not lines:
         raise ValueError('Empty log')
-    header = lines[0] if lines[0].get('format') == 'agent-tune.log.v1' else None
-    plat = header['platform'] if header else telemetry.DEFAULT_PLATFORM
-    rows = []
-    if header:
-        for r in lines[1:]:
-            groups = {k: bytes.fromhex(v) for k, v in (r.get('raw') or {}).items()}
-            ch = telemetry.decode_groups(groups, plat) if groups else dict(r.get('ch', {}))
-            rows.append({'t': float(r['t']), 'ch': _finish(ch)})
-        source = 'agent-tune-usb'
-    else:  # vehicle-lab format: one row per group, groups of one frame share t
-        merged = {}
-        for r in lines:
-            if r.get('group') not in telemetry.GROUPS or not r.get('raw'):
-                raise ValueError('Unrecognized JSONL log (expected agent-tune or vehicle-lab USB format)')
-            merged.setdefault(r['t'], {})[r['group']] = bytes.fromhex(r['raw'])
-        for t in sorted(merged):
-            rows.append({'t': float(t), 'ch': _finish(telemetry.decode_groups(merged[t], plat))})
-        source = 'vehicle-lab-usb'
+    header = lines[0]
+    if header.get('format') != 'agent-tune.log.v1':
+        raise ValueError('Not an agent-tune log (first line must have "format": "agent-tune.log.v1")')
+    plat = header.get('platform_file') or header.get('platform') or telemetry.DEFAULT_PLATFORM
+    rows, unknown = [], 0
+    for r in lines[1:]:
+        if 'frame' in r and 'raw' not in r:  # frame that did not match the platform layout; kept raw only
+            unknown += 1
+            continue
+        groups = {k: bytes.fromhex(v) for k, v in (r.get('raw') or {}).items()}
+        ch = telemetry.decode_groups(groups, plat) if groups else dict(r.get('ch', {}))
+        rows.append({'t': float(r['t']), 'ch': _finish(ch)})
+    if not rows:
+        raise ValueError(f'Log has no decoded frames ({unknown} unrecognized frames); the platform layout may not match this car')
     if any(b['t'] < a['t'] for a, b in zip(rows, rows[1:])):
         raise ValueError('Time goes backwards')
-    return Log(name, hashlib.sha256(data).hexdigest(), source, rows, platform=plat,
-               notes=['USB channels decode what KTuner displays (validated on the reference car).'])
+    notes = ['USB channels are decoded to match what KTuner displays.']
+    if unknown:
+        notes.append(f'{unknown} frames did not match the platform layout and were skipped.')
+    return Log(name, hashlib.sha256(data).hexdigest(), 'agent-tune-usb', rows, platform=header.get('platform'), notes=notes)
 
 
 def load(path):
