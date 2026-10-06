@@ -1,0 +1,72 @@
+name: Tried it on my car
+description: Report how agent-tune behaved on a car it has not been verified on, whether it worked or not.
+title: "[Car report] <make model year engine>"
+labels: ["car-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying it. Please paste command output as-is; it contains fingerprints and pass/fail
+        checks, not tune values. Never attach tune files, logs, VINs or ECU serial numbers.
+  - type: input
+    id: car
+    attributes:
+      label: Car
+      placeholder: "Honda Accord 2019 1.5T, CVT"
+    validations:
+      required: true
+  - type: input
+    id: ecu
+    attributes:
+      label: ECU part number (shown in KTuner)
+      placeholder: "37805-6A0-A530"
+    validations:
+      required: true
+  - type: input
+    id: ktuner
+    attributes:
+      label: KTuner version
+      placeholder: "1.0.14.1"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: agent-tune version (`agent-tune --version`)
+    validations:
+      required: true
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What you tried
+      options:
+        - label: "`analyze` on a KTuner CSV export"
+        - label: "`log` live through the dongle"
+        - label: "`tune check` on my .kcl"
+        - label: "`tune set --unverified` with a single-cell change, then opened the file in KTuner"
+  - type: textarea
+    id: check
+    attributes:
+      label: Output of `agent-tune tune check your.kcl`
+      render: json
+  - type: textarea
+    id: log
+    attributes:
+      label: Output of `agent-tune log --seconds 60` (the summary and any warning)
+      render: json
+  - type: textarea
+    id: channels
+    attributes:
+      label: Which live channels matched what KTuner displays, and which did not
+  - type: textarea
+    id: edit
+    attributes:
+      label: Single-cell edit result
+      description: Which cell, by how much, and what KTuner showed when you opened the new file. Did any other cell change?
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: This report contains no tune files, logs, VINs or serial numbers.
+          required: true

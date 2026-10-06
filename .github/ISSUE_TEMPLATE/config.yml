@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/VehraLabs/agent-tune/discussions
+    about: Ask how something works or float an idea in Discussions.
+  - name: Security report
+    url: https://github.com/VehraLabs/agent-tune/security/advisories/new
+    about: Report a security problem privately.
