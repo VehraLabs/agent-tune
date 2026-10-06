@@ -23,7 +23,7 @@ mcp = ["mcp>=2,<3"]
 agent-tune = "agent_tune.cli:main"
 
 [project.urls]
-Repository = "https://github.com/vehra/agent-tune"
+Repository = "https://github.com/VehraLabs/agent-tune"
 
 [build-system]
 requires = ["hatchling"]

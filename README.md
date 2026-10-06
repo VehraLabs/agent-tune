@@ -33,7 +33,7 @@ help add a platform.
 Requires Windows, Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv tool install "agent-tune[mcp] @ git+https://github.com/vehra/agent-tune"
+uv tool install "agent-tune[mcp] @ git+https://github.com/VehraLabs/agent-tune"
 ```
 
 ## Use it with an AI agent (MCP)
