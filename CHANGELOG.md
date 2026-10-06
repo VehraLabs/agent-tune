@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Demo recording in `docs/demo.gif`, with the scripts that produce it in `demo/` (synthetic logs, simulated dongle, real commands).
+
 ## 0.2.0 - 2026-10-06
 
 * New README, CONTRIBUTING, SECURITY and a skill in `skills/agent-tune` for skill-based agents.

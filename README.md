@@ -25,6 +25,10 @@ It is built to be driven by an AI agent: every command prints JSON, and the bund
 MCP server teach the agent the tuning workflow and the safety rules. It works just as well by
 hand.
 
+![agent-tune demo: log, analyze, change the tune, compare](docs/demo.gif)
+
+<sub>Demo with synthetic logs and a simulated dongle; every command and its output is real. See [demo/](demo/README.md).</sub>
+
 **agent-tune never flashes anything.** It never writes to the dongle or the ECU, and it never
 overwrites your original tune.
 
