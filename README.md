@@ -29,7 +29,7 @@ changed.
 
 It never flashes the car and never touches your original tune file.
 
-![A KTuner owner asks what to do first, records a datalog, and gets one small change written to a new tune file](docs/demo.gif)
+[![Watch the demo: a KTuner owner asks what to do first, records a datalog, and gets one small change written to a new tune file](docs/demo-poster.png)](docs/demo.mp4)
 
 > agent-tune works with KTuner hardware and the KTuner app. It is not affiliated with or
 > endorsed by KTuner.
