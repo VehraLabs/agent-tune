@@ -1,6 +1,6 @@
 [project]
 name = "agent-tune"
-version = "0.1.0"
+version = "0.2.0"
 description = "Read car data through your KTuner dongle, analyze it, and write a new .kcl tune file to review and flash in KTuner. Built for AI agents."
 readme = "README.md"
 license = "MIT"
@@ -24,6 +24,7 @@ agent-tune = "agent_tune.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/VehraLabs/agent-tune"
+Vehra = "https://vehra.net"
 Repository = "https://github.com/VehraLabs/agent-tune"
 Issues = "https://github.com/VehraLabs/agent-tune/issues"
 Changelog = "https://github.com/VehraLabs/agent-tune/blob/main/CHANGELOG.md"

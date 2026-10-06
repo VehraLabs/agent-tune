@@ -11,7 +11,8 @@ other cars, and new verified `.kcl` families.
 * agent-tune stays read-only toward the car. Do not add code that sends anything to the dongle
   other than the live-data poll, and never anything that flashes.
 * Every command prints JSON. Keep output stable and self-describing; agents depend on it.
-* One behaviour per pull request, with a test.
+* One behaviour per pull request, with a test. `main` only takes pull requests with green CI.
+* Be kind; see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Development
 
@@ -25,8 +26,9 @@ Tests use synthetic data. Set `AGENT_TUNE_TEST_KCL=<path to a supported .kcl>` t
 
 ## Reporting how it went on your car
 
-Run `agent-tune tune check your.kcl` and `agent-tune log --seconds 60`, then open an issue
-titled with the car, engine, ECU part number (shown in KTuner) and KTuner version. Include:
+Run `agent-tune tune check your.kcl` and `agent-tune log --seconds 60`, then open an issue with
+the "Tried it on my car" template. It asks for the car, engine, ECU part number (shown in KTuner)
+and KTuner version, plus:
 
 * the `tune check` output (it contains fingerprints and pass/fail checks, not tune values),
 * the `summary` from `log`, and which channels matched KTuner's display,

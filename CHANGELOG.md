@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-10-06
 
 * New README, CONTRIBUTING, SECURITY and a skill in `skills/agent-tune` for skill-based agents.
 * `tune check` reports plausibility checks for `.kcl` files outside the verified families.
@@ -11,6 +11,8 @@
 * The `.kcl` package is restructured into one module per table with no research notes in the
   output. Offsets and encodings are unchanged.
 * Removed support for the pre-release internal log format.
+* Repository: issue templates, code of conduct, Dependabot, branch protection on `main`, and a
+  release workflow that publishes GitHub release assets and PyPI.
 
 ## 0.1.0
 
