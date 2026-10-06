@@ -36,11 +36,8 @@ It never flashes the car and never touches your original tune file.
 
 ## What you need
 
-* A KTuner and the KTuner app on a Windows laptop.
-* A Honda Civic 11th gen 2.0 L (non-turbo) for the full workflow, including editing tune files.
-  On other KTuner-supported cars, agent-tune can already read and explain your datalogs; see
-  [Trying another car](#trying-another-car).
-* An AI assistant that can use skills or MCP, such as Claude Code, Codex or OpenClaw. Optional:
+* A Honda with a KTuner, and the KTuner app on a Windows laptop.
+* An AI assistant that can use skills or MCP, such as Claude Code or Codex. Optional:
   every step also works as a command.
 
 ## Get started
@@ -65,11 +62,11 @@ Connect it once:
 
 | Assistant | How to connect |
 |---|---|
-| Assistants that use skills (Claude Code, Codex, OpenClaw, ...) | Copy [`skills/agent-tune`](skills/agent-tune) into your skills folder (OpenClaw: `~/.agents/skills` or `<workspace>/skills`). |
+| Assistants that use skills (Claude Code, Codex, ...) | Copy [`skills/agent-tune`](skills/agent-tune) into your assistant's skills folder. |
 | Assistants that use MCP | `claude mcp add agent-tune -- agent-tune mcp`, or run `agent-tune mcp` as a stdio server from any MCP client. |
 | Anything that can run commands | Call `agent-tune` directly. Every command prints JSON. |
 
-Then ask it something like *"I have a KTuner on my Civic and I want more power. What should I
+Then ask it something like *"I have a KTuner on my Honda and I want more power. What should I
 do first?"* It will tell you how to drive for a log, check what you bring back, and propose
 edits for you to approve.
 
@@ -105,11 +102,11 @@ after.csv` shows the difference.
 
 ## What's supported
 
-| What | Cars |
+| What | Status |
 |---|---|
-| Reading KTuner datalogs (CSV export): full-throttle runs, knock, AFR, timing, fuel trims, before/after | Any car KTuner supports |
-| Logging live data without the KTuner app | Honda Civic 11th gen 2.0 L (64S ECU) |
-| Editing tune files: 1,502 values, including ignition timing, full-throttle fuel (WOT enrichment), intake cam (VTC), VTEC, rev limits, fuel cut, airflow (AFM) curve and cylinder trims | Honda Civic 11th gen 2.0 L (64S ECU, 37805-64S-AC20), KTuner 1.0.14.1 save files |
+| Reading KTuner datalogs (CSV export): full-throttle runs, knock, AFR, timing, fuel trims, before/after | Every Honda KTuner supports |
+| Editing tune files: 1,502 values, including ignition timing, full-throttle fuel (WOT enrichment), intake cam (VTC), VTEC, rev limits, fuel cut, airflow (AFM) curve and cylinder trims | Verified so far on the 64S ECU (Civic 2.0 L, 37805-64S-AC20, KTuner 1.0.14.1 saves). Other ECUs: [check your file](#adding-your-car) |
+| Logging live data without the KTuner app | Verified so far on the 64S ECU. Other ECUs: [try it](#adding-your-car) |
 
 When agent-tune records live data itself, it reads RPM, measured and commanded lambda (AFR),
 MAF (g/s and Hz), MAP, throttle position, ignition timing, short and long-term fuel trims,
@@ -118,9 +115,9 @@ match what KTuner displays. Knock count, VTEC state, cam angles, commanded throt
 are not available that way yet, so record with the KTuner app when you need them. Any timing
 change needs the knock count.
 
-### Trying another car
+### Adding your car
 
-So far agent-tune has been verified on one car. Here is how to try yours.
+Each new ECU is added once someone confirms it works. Here is how to check yours.
 
 * **Datalogs.** Anything that reads a KTuner CSV export already works on any car. For recording with agent-tune itself, `agent-tune log` keeps every reply the dongle
   sends, including ones it doesn't recognize yet, so they can be matched against a KTuner
