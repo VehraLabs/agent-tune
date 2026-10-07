@@ -21,18 +21,25 @@ def group(size, dids):
     return raw
 
 
-def frame(rpm=800.0, lam=1.0, cmd=1.0, maf_hz=2500, stft=0.0, status=2, tps=0.0):
+def frame(rpm=800.0, lam=1.0, cmd=1.0, maf_hz=2500, stft=0.0, status=2, tps=0.0, gear=0, tps_cmd=0.0,
+          cam=0.0, cam_cmd=0.0, excam=0.0, excam_cmd=0.0, fp1=0.0):
     a = group(169, (0x2610, 0x2611, 0x2612))
     a[9:11] = int(rpm * 4).to_bytes(2, 'big')
     a[14], a[16] = 40 + 88, 40 + 30
+    a[27:29] = round(fp1 / 0.004).to_bytes(2, 'big')
     a[67:69] = min(65535, int(lam * 32768)).to_bytes(2, 'big')
     a[71:73] = min(65535, int(cmd * 32768)).to_bytes(2, 'big')
     a[69], a[70], a[73] = round((100 + stft) / 0.78125), 128, status
     a[123:125] = int(tps / 0.005).to_bytes(2, 'big')
+    a[129:131] = round(tps_cmd / 0.006).to_bytes(2, 'big')
+    a[159] = gear
     a[24] = int((15 + 64) / 0.5)
     b = group(113, (0x2613, 0x2660))
     b[101] = maf_hz // 50
     c = group(169, (0x2662, 0x2663, 0x266C))
+    c[35:37] = round(cam * 10).to_bytes(2, 'big')
+    c[55:57] = round(cam_cmd * 10).to_bytes(2, 'big')
+    c[156], c[157] = round(excam * 5), round(excam_cmd * 5)
     return bytes(3) + bytes(a) + bytes(b) + bytes(56) + bytes(c) + bytes(24)
 
 
@@ -57,6 +64,28 @@ def test_frame_decoding_and_stream():
     assert values['maf_hz'] == 3000 and abs(values['stft_pct'] - 3.125) < 1e-6 and abs(values['tps_pct'] - 42.5) < 1e-6
     assert values['ign_deg'] == 15 and values['ect_c'] == 88 and values['fuel_status'] == 2
     assert telemetry.split_groups(f[:-1]) is None
+
+
+def test_gear_throttle_command_cams_and_fp1_decode():
+    f = frame(rpm=3000, gear=3, tps_cmd=63.5, cam=38.7, cam_cmd=55.0, excam=12.4, excam_cmd=44.8, fp1=11.28)
+    values = telemetry.decode_groups(telemetry.split_groups(f))
+    assert values['gear'] == 3 and abs(values['tps_cmd_pct'] - 63.498) < 1e-6
+    assert abs(values['cam_deg'] - 38.7) < 1e-6 and abs(values['cam_cmd_deg'] - 55.0) < 1e-6
+    assert abs(values['excam_deg'] - 12.4) < 1e-6 and abs(values['excam_cmd_deg'] - 44.8) < 1e-6
+    assert abs(values['fuel_pressure'] - 11.28) < 1e-6
+    assert {'gear', 'cam_deg', 'tps_cmd_pct'} <= set(logs.UNITS)
+    not_decoded = telemetry.platform()['not_decoded']
+    assert 'gear' not in not_decoded and 'knock count' in not_decoded and 'VTEC state' in not_decoded
+
+
+def test_usb_pull_reports_gear_and_cam(tmp_path):
+    idle = [frame(rpm=800, gear=1) for _ in range(20)]
+    pull = [frame(rpm=2000 + 40 * i, tps=100, gear=2, cam=30 + i * 0.05, tps_cmd=100) for i in range(100)]
+    p = tmp_path / 'pull.jsonl'
+    write_usb_log(p, idle + pull)
+    result = analyze.analyze(logs.load(p))
+    assert len(result['pulls']) == 1 and result['pulls'][0]['gear'] == 2
+    assert all('cam_deg' in b for b in result['pulls'][0]['by_rpm'])
 
 
 class FakePort:

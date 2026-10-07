@@ -51,13 +51,10 @@
     },
     "did_stride": 56
   },
-  "notes": "Channels decode to the values KTuner displays for this ECU; treat them as KTuner display values, not an independent sensor calibration. Knock count, VTEC state, cam angles, commanded throttle and gear are not available over USB yet; use a KTuner CSV export when you need them.",
+  "notes": "Channels decode to the values KTuner displays for this ECU; treat them as KTuner display values, not an independent sensor calibration. Knock count and VTEC state are not available over USB yet; use a KTuner CSV export when you need them.",
   "not_decoded": [
     "knock count",
-    "VTEC state",
-    "cam angle (commanded/actual)",
-    "commanded throttle",
-    "gear"
+    "VTEC state"
   ],
   "channels": [
     {
@@ -211,6 +208,76 @@
       "bias": 0,
       "unit": "enum",
       "note": "Same codes as KTuner FUEL.STAT: 1 open loop, 2 closed loop, 4 fuel cut, 0 engine off."
+    },
+    {
+      "name": "gear",
+      "group": "A",
+      "offset": 159,
+      "type": "u8",
+      "scale": 1,
+      "bias": 0,
+      "unit": "",
+      "note": "Matches KTuner GEAR (1-7 checked; 0 with the engine off)."
+    },
+    {
+      "name": "tps_cmd_pct",
+      "group": "A",
+      "offset": 129,
+      "type": "u16be",
+      "scale": 0.006,
+      "bias": 0,
+      "unit": "%",
+      "note": "Matches KTuner TPS.CMD (2.8-63.5 % checked)."
+    },
+    {
+      "name": "cam_deg",
+      "group": "C",
+      "offset": 35,
+      "type": "u16be",
+      "scale": 0.1,
+      "bias": 0,
+      "unit": "deg",
+      "note": "Matches KTuner CAMA, intake cam actual (0-61.5 deg checked)."
+    },
+    {
+      "name": "cam_cmd_deg",
+      "group": "C",
+      "offset": 55,
+      "type": "u16be",
+      "scale": 0.1,
+      "bias": 0,
+      "unit": "deg",
+      "note": "Matches KTuner CAM.CMD (0-55 deg checked)."
+    },
+    {
+      "name": "excam_deg",
+      "group": "C",
+      "offset": 156,
+      "type": "u8",
+      "scale": 0.2,
+      "bias": 0,
+      "unit": "deg",
+      "note": "Matches KTuner EXCAMA, exhaust cam actual (0-51 deg checked)."
+    },
+    {
+      "name": "excam_cmd_deg",
+      "group": "C",
+      "offset": 157,
+      "type": "u8",
+      "scale": 0.2,
+      "bias": 0,
+      "unit": "deg",
+      "note": "Matches KTuner EXCAM.CMD (0-44.8 deg checked)."
+    },
+    {
+      "name": "fuel_pressure",
+      "group": "A",
+      "offset": 27,
+      "type": "u16be",
+      "scale": 0.004,
+      "bias": 0,
+      "unit": "",
+      "note": "Matches KTuner FP1 (0-11.27 checked). Named after the KTuner column, but it moves like an injector pulse width in ms (KTuner FDC is about FP1 x rpm / 1200), not like a pressure."
     }
   ]
 }
