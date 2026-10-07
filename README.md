@@ -109,11 +109,11 @@ after.csv` shows the difference.
 | Logging live data without the KTuner app | Verified so far on the 64S ECU. Other ECUs: [try it](#adding-your-car) |
 
 When agent-tune records live data itself, it reads RPM, measured and commanded lambda (AFR),
-MAF (g/s and Hz), MAP, throttle position, ignition timing, short and long-term fuel trims,
-coolant and intake temperature, speed, battery voltage, knock control and fuel status. These
-match what KTuner displays. Knock count, VTEC state, cam angles, commanded throttle and gear
-are not available that way yet, so record with the KTuner app when you need them. Any timing
-change needs the knock count.
+MAF (g/s and Hz), MAP, throttle position and commanded throttle, ignition timing, short and
+long-term fuel trims, coolant and intake temperature, speed, gear, intake and exhaust cam angles
+(actual and commanded), FP1, battery voltage, knock control and fuel status. These match what
+KTuner displays. Knock count and VTEC state are not available that way yet, so record with the
+KTuner app when you need them. Any timing change needs the knock count.
 
 ### Adding your car
 

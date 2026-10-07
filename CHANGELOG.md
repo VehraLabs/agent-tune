@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* Live logging on the 64S Civic now records gear, commanded throttle, intake and exhaust cam
+  angles (actual and commanded) and FP1, matching KTuner's display. Existing USB logs gain these
+  channels when loaded, because they keep the raw bytes. Knock count and VTEC state still need a
+  KTuner CSV.
 * `guide GOAL` explains how to record a useful datalog (method, driving plan, export) and
   `check-log LOG --goal GOAL` says whether a log is good enough and what to redo. MCP tools
   `datalog_guide` and `check_log`; the skill now starts with them.
