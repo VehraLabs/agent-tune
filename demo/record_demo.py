@@ -18,16 +18,59 @@ import sys
 import tempfile
 import textwrap
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
+MAC = sys.platform == 'darwin'
 W, H = 1280, 720
-BG, FG, DIM, ACCENT, OK, USER = '#111113', '#F4F2EE', '#9A9AA0', '#E0661B', '#7FB685', '#9CC3E6'
-FONT_PATH = os.environ.get('DEMO_FONT', r'C:\Windows\Fonts\consola.ttf')
-BOLD_PATH = os.environ.get('DEMO_FONT_BOLD', r'C:\Windows\Fonts\consolab.ttf')
-FONT, BOLD = ImageFont.truetype(FONT_PATH, 21), ImageFont.truetype(BOLD_PATH, 21)
-LINE, TOP, LEFT, COLS = 29, 66, 44, 100
-ROWS = (H - TOP - 12) // LINE
+BG, TITLE_BG, FG, DIM, ACCENT, OK, USER = '#111113', '#2A2A2E', '#F4F2EE', '#9A9AA0', '#E0661B', '#7FB685', '#9CC3E6'
+LIGHTS = ('#FF5F57', '#FEBC2E', '#28C840')
+# Menlo ships with macOS in one .ttc file: index 0 is regular, index 1 is bold.
+FONT_PATH = os.environ.get('DEMO_FONT', '/System/Library/Fonts/Menlo.ttc' if MAC else r'C:\Windows\Fonts\consola.ttf')
+BOLD_PATH = os.environ.get('DEMO_FONT_BOLD', '/System/Library/Fonts/Menlo.ttc' if MAC else r'C:\Windows\Fonts\consolab.ttf')
+BOLD_INDEX = 1 if MAC and 'DEMO_FONT_BOLD' not in os.environ else 0
+FONT, BOLD = ImageFont.truetype(FONT_PATH, 21), ImageFont.truetype(BOLD_PATH, 21, index=BOLD_INDEX)
+TITLE = ImageFont.truetype(FONT_PATH, 16)
+# The window sits on a gradient backdrop with a soft shadow, like a screenshot of a Mac window.
+M, RADIUS, TB = 28, 12, 36
+X0, Y0, X1, Y1 = M, M, W - M, H - M
+LINE, COLS = 29, 92
+LEFT, TOP = X0 + 24, Y0 + TB + 14
+ROWS = (Y1 - 12 - TOP) // LINE
+
+
+def make_gradient():
+    top, bottom = (62, 64, 84), (18, 18, 26)
+    img = Image.new('RGB', (W, H))
+    d = ImageDraw.Draw(img)
+    for y in range(H):
+        t = y / (H - 1)
+        d.line([(0, y), (W, y)], fill=tuple(round(a + (b - a) * t) for a, b in zip(top, bottom)))
+    return img
+
+
+def make_window_backdrop():
+    img = make_gradient()
+    shadow = Image.new('L', (W, H), 0)
+    ImageDraw.Draw(shadow).rounded_rectangle([X0, Y0 + 14, X1, Y1 + 14], radius=RADIUS, fill=170)
+    img.paste((0, 0, 0), mask=shadow.filter(ImageFilter.GaussianBlur(20)))
+    return img
+
+
+GRADIENT = make_gradient()
+WINDOW_BACKDROP = make_window_backdrop()
+
+
+def draw_window(d):
+    d.rounded_rectangle([X0, Y0, X1, Y1], radius=RADIUS, fill=BG)
+    d.rounded_rectangle([X0, Y0, X1, Y0 + TB + 20], radius=RADIUS, fill=TITLE_BG)
+    d.rectangle([X0, Y0 + TB, X1, Y0 + TB + 20], fill=BG)
+    d.line([(X0, Y0 + TB), (X1, Y0 + TB)], fill='#000000')
+    for i, c in enumerate(LIGHTS):
+        cx, cy = X0 + 22 + i * 20, Y0 + TB // 2
+        d.ellipse([cx - 6, cy - 6, cx + 6, cy + 6], fill=c)
+    tw = d.textlength('agent-tune', font=TITLE)
+    d.text(((W - tw) / 2, Y0 + 9), 'agent-tune', font=TITLE, fill=DIM)
 
 
 class Screen:
@@ -35,12 +78,9 @@ class Screen:
         self.lines, self.frames = [], []
 
     def render(self, ms, cursor=False):
-        img = Image.new('RGB', (W, H), BG)
+        img = WINDOW_BACKDROP.copy()
         d = ImageDraw.Draw(img)
-        d.rectangle([0, 0, W, 42], fill='#1C1C1F')
-        for i, c in enumerate((ACCENT, '#55555A', '#55555A')):
-            d.ellipse([20 + i * 24, 14, 34 + i * 24, 28], fill=c)
-        d.text((104, 9), 'agent-tune', font=BOLD, fill=FG)
+        draw_window(d)
         visible = self.lines[-ROWS:]
         for row, (text, color, bold) in enumerate(visible):
             d.text((LEFT, TOP + row * LINE), text, font=BOLD if bold else FONT, fill=color)
@@ -86,9 +126,9 @@ class Screen:
         self.render(int(seconds * 1000))
 
     def card(self, title, lines, hold):
-        img = Image.new('RGB', (W, H), BG)
+        img = GRADIENT.copy()
         d = ImageDraw.Draw(img)
-        big = ImageFont.truetype(BOLD_PATH, 56)
+        big = ImageFont.truetype(BOLD_PATH, 56, index=BOLD_INDEX)
         y = 250
         d.text(((W - d.textlength(title, font=big)) / 2, y), title, font=big, fill=FG)
         y += 90
@@ -216,7 +256,7 @@ def main():
     sample = Image.new('RGB', (W, H * 4))
     for k, (f, _) in enumerate(s.frames[1::max(1, len(s.frames) // 4)][:4]):
         sample.paste(f, (0, H * k))
-    palette = sample.quantize(colors=48, method=Image.Quantize.MEDIANCUT)
+    palette = sample.quantize(colors=96, method=Image.Quantize.MEDIANCUT)
     frames = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f, _ in s.frames]
     gif = out.with_suffix('.gif')
     frames[0].save(gif, save_all=True, append_images=frames[1:], duration=[ms for _, ms in s.frames],

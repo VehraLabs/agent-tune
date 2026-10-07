@@ -16,5 +16,5 @@ stored in the repository.
 uv run --with pillow --with imageio --with imageio-ffmpeg --with numpy python demo/record_demo.py --kcl path/to/stock.kcl
 ```
 
-Fonts default to Consolas on Windows; set `DEMO_FONT` and `DEMO_FONT_BOLD` to other monospace
-TTF files elsewhere.
+The frame is drawn as a macOS window on a gradient backdrop. Fonts default to Menlo on macOS and
+Consolas on Windows; set `DEMO_FONT` and `DEMO_FONT_BOLD` to other monospace TTF files elsewhere.
