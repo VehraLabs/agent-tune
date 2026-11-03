@@ -37,7 +37,7 @@ build-backend = "hatchling.build"
 packages = ["src/agent_tune"]
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=9.2.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
